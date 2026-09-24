@@ -1,0 +1,61 @@
+{
+  "name": "Sistema de Reconhecimento Facial",
+  "short_name": "RecFacial",
+  "description": "Sistema de cadastro e reconhecimento facial biométrico em tempo real.",
+  "start_url": "/",
+  "scope": "/",
+  "id": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f8fafc",
+  "theme_color": "#4f46e5",
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-maskable-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/icon-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Reconhecimento Facial",
+      "short_name": "Reconhecer",
+      "description": "Abrir câmera e escanear rostos em tempo real",
+      "url": "/reconhecer",
+      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Cadastrar Pessoa",
+      "short_name": "Cadastrar",
+      "description": "Cadastrar nova biometria facial",
+      "url": "/cadastro",
+      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Ver Cadastros",
+      "short_name": "Cadastros",
+      "description": "Listar usuários e biometrias salvas",
+      "url": "/cadastros",
+      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
+    }
+  ],
+  "categories": ["utilities", "productivity", "security"]
+}
