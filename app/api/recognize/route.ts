@@ -3,16 +3,10 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-// Cálculo da distância euclidiana entre dois vetores de 128 dimensões
-function euclideanDistance(v1: number[], v2: number[]): number {
-  if (v1.length !== v2.length) return Infinity;
-  let sum = 0;
-  for (let i = 0; i < v1.length; i++) {
-    const diff = v1[i] - v2[i];
-    sum += diff * diff;
-  }
-  return Math.sqrt(sum);
-}
+import {
+  FACE_MATCH_THRESHOLD,
+  compareFace,
+} from "@/lib/face-recognition";
 
 // GET /api/recognize - Retorna descriptors cadastrados para matching em tempo real no cliente
 export async function GET() {
@@ -95,44 +89,33 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Limiar de reconhecimento padrão de modelos face-api / dlib:
-    // Distância <= 0.55 indica a mesma pessoa com altíssima precisão
-    const MATCH_THRESHOLD = 0.55;
-
-    let bestMatch: {
-      person: { id: string; name: string; createdAt: Date };
-      distance: number;
-    } | null = null;
-
-    for (const person of persons) {
-      try {
-        const storedDescriptor = JSON.parse(person.faceDescriptor);
-        if (Array.isArray(storedDescriptor) && storedDescriptor.length === 128) {
-          const distance = euclideanDistance(faceDescriptor, storedDescriptor);
-          if (!bestMatch || distance < bestMatch.distance) {
-            bestMatch = { person, distance };
+    const parsedPersons = persons
+      .map((p) => {
+        try {
+          const descriptor = JSON.parse(p.faceDescriptor);
+          if (Array.isArray(descriptor) && descriptor.length === 128) {
+            return { id: p.id, name: p.name, descriptor, createdAt: p.createdAt };
           }
+        } catch {
+          // ignore corrupted
         }
-      } catch (err) {
-        console.error(`Erro ao analisar descriptor da pessoa ID ${person.id}:`, err);
-      }
-    }
+        return null;
+      })
+      .filter((p): p is { id: string; name: string; descriptor: number[]; createdAt: Date } => p !== null);
 
-    if (bestMatch && bestMatch.distance <= MATCH_THRESHOLD) {
-      // Confiança percentual estimada
-      const confidence = Math.round(
-        Math.max(0, Math.min(100, (1 - bestMatch.distance / MATCH_THRESHOLD) * 100))
-      );
+    const { match, bestMatch } = compareFace(faceDescriptor, parsedPersons, FACE_MATCH_THRESHOLD);
 
+    if (match) {
+      const matchedPerson = parsedPersons.find((p) => p.id === match.id);
       return NextResponse.json({
         success: true,
         recognized: true,
-        distance: Number(bestMatch.distance.toFixed(4)),
-        confidence: Math.max(50, 100 - Math.round(bestMatch.distance * 80)),
+        distance: match.distance,
+        confidence: match.confidence,
         person: {
-          id: bestMatch.person.id,
-          name: bestMatch.person.name,
-          createdAt: bestMatch.person.createdAt,
+          id: match.id,
+          name: match.name,
+          createdAt: matchedPerson ? matchedPerson.createdAt : new Date(),
         },
       });
     }
@@ -140,7 +123,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       recognized: false,
-      distance: bestMatch ? Number(bestMatch.distance.toFixed(4)) : null,
+      distance: bestMatch ? bestMatch.distance : null,
       message: "Pessoa não reconhecida no sistema.",
     });
   } catch (error) {

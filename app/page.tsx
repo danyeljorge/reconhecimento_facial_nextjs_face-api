@@ -27,7 +27,7 @@ export default function DashboardPage() {
           </h1>
 
           <p className="mt-4 text-base sm:text-lg text-slate-600 leading-relaxed">
-            Plataforma biométrica de alta precisão para cadastro facial e identificação em tempo real via inteligência artificial e banco de dados SQLite.
+            Plataforma biométrica de alta precisão com cadastro facial por foto e autorização de acesso via câmera com Liveness (Anti-Spoofing) e SQLite.
           </p>
 
           {/* Botões de Ação Imediata */}
@@ -37,7 +37,7 @@ export default function DashboardPage() {
               className="inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-2xl transition shadow-md shadow-indigo-600/20 group"
             >
               <ScanFace className="w-5 h-5" />
-              <span>Iniciar Reconhecimento Facial</span>
+              <span>Acesso via Câmera</span>
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </Link>
 
@@ -46,7 +46,7 @@ export default function DashboardPage() {
               className="inline-flex items-center justify-center gap-2 px-5 py-3.5 bg-white hover:bg-slate-50 text-slate-800 text-sm font-semibold rounded-2xl transition border border-slate-300 shadow-sm"
             >
               <UserPlus className="w-4 h-4 text-slate-600" />
-              <span>Cadastrar Nova Pessoa</span>
+              <span>Cadastrar por Foto</span>
             </Link>
 
             <Link
@@ -69,17 +69,17 @@ export default function DashboardPage() {
               <ScanFace className="w-6 h-6" />
             </div>
             <h2 className="text-lg font-bold text-slate-900 mb-2">
-              Reconhecimento Facial
+              Controle de Acesso
             </h2>
             <p className="text-xs text-slate-500 leading-relaxed mb-6">
-              Identificação instantânea via webcam comparando com os vetores biométricos registrados no SQLite.
+              Acesso exclusivo por câmera com camada de Liveness (Anti-Spoofing) antes da validação da pessoa no banco.
             </p>
           </div>
           <Link
             href="/reconhecer"
             className="inline-flex items-center justify-center gap-2 w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl transition shadow-sm"
           >
-            <span>Abrir Câmera</span>
+            <span>Iniciar Acesso</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
@@ -94,14 +94,14 @@ export default function DashboardPage() {
               Cadastrar Pessoa
             </h2>
             <p className="text-xs text-slate-500 leading-relaxed mb-6">
-              Captura facial de novos alunos e servidores com validação de 1 face e extração de Face Descriptor 128D.
+              Cadastro da pessoa via foto enviada, gerando a referência biométrica (Face Descriptor 128D) para o SQLite.
             </p>
           </div>
           <Link
             href="/cadastro"
             className="inline-flex items-center justify-center gap-2 w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl transition shadow-sm"
           >
-            <span>Novo Cadastro</span>
+            <span>Cadastrar com Foto</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>

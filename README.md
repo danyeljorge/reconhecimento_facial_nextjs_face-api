@@ -1,4 +1,4 @@
-# 👁️ Sistema de Reconhecimento Facial & Biometria em Tempo Real
+# 👁️ Sistema de Reconhecimento Facial & Controle de Acesso com Liveness (Anti-Spoofing)
 
 <p align="center">
   <img src="./public/cover.png" alt="Capa do Sistema de Reconhecimento Facial" width="100%" style="border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.12);" />
@@ -8,6 +8,7 @@
   <img src="https://img.shields.io/badge/Next.js-14.2-black?style=for-the-badge&logo=next.js" alt="Next.js" />
   <img src="https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React" />
   <img src="https://img.shields.io/badge/TypeScript-5.0-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/Liveness-Anti--Spoofing-10B981?style=for-the-badge&logo=shieldcheck" alt="Liveness Anti-Spoofing" />
   <img src="https://img.shields.io/badge/Tailwind_CSS-3.4-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind CSS" />
   <img src="https://img.shields.io/badge/Prisma-5.21-2D3748?style=for-the-badge&logo=prisma&logoColor=white" alt="Prisma" />
   <img src="https://img.shields.io/badge/SQLite-003B57?style=for-the-badge&logo=sqlite&logoColor=white" alt="SQLite" />
@@ -18,132 +19,158 @@
 
 ## 📌 Sobre o Projeto
 
-O **Sistema de Reconhecimento Facial** é uma aplicação web moderna e progressiva (PWA) de controle de acesso biométrico de alta precisão. 
+O **Sistema de Reconhecimento Facial** é uma aplicação web moderna e progressiva (PWA) de controle de acesso biométrico de alta segurança e precisão.
 
-O sistema realiza **detecção, extração de características biométricas (Face Descriptors de 128 dimensões) e reconhecimento facial em tempo real** diretamente no navegador através da webcam, garantindo total privacidade e performance ao dispensar o envio de transmissões de vídeo para servidores externos.
+A arquitetura do sistema é dividida em dois momentos completamente distintos e desacoplados:
 
-Todos os dados biométricos e cadastros são persistidos localmente em um banco de dados **SQLite** gerenciado pelo **Prisma ORM**.
+1. **Momento 1 — Cadastro por Foto:** O usuário cadastra uma pessoa enviando uma imagem/fotografia. O sistema valida se há **exatamente 1 rosto**, gera a referência biométrica (*Face Descriptor* de 128 dimensões) e a armazena no banco de dados SQLite local.
+2. **Momento 2 — Acesso Exclusivo via Câmera com Liveness (Anti-Spoofing):** Para obter autorização de entrada, o acesso deve ser feito **obrigatoriamente pela câmera ao vivo**. O sistema executa primeiro uma validação ativa de vivacidade (*Liveness*) para confirmar que se trata de uma pessoa real diante da lente (impedindo fraudes por fotos impressas, telas ou vídeos) e, somente após a aprovação do Liveness, compara a biometria com os registros do banco de dados.
+
+Todo o processamento neural ocorre **100% no navegador (Client-Side AI)**, garantindo total privacidade, conformidade com a LGPD e latência ultrabaixa.
 
 ---
 
-## 🚀 Como o Projeto Foi Desenvolvido
+## 🛡️ Regra Fundamental de Autorização de Acesso
 
-### 1. Arquitetura e Processamento On-Device (Client-Side AI)
-Diferente de sistemas que enviam o feed de vídeo para APIs na nuvem (o que gera alto consumo de banda e riscos de privacidade), o nosso sistema processa todo o pipeline neural **diretamente no cliente** via `@vladmandic/face-api` (uma implementação otimizada do TensorFlow.js para browsers):
-1. **Captura da Câmera:** O elemento `<video>` captura o stream da webcam do usuário.
-2. **Detecção Facial:** O modelo `ssdMobilenetv1` identifica a presença e as caixas delimitadoras (*bounding boxes*) das faces no frame.
-3. **Mapeamento de Pontos Anatômicos:** O modelo `faceLandmark68Net` detecta 68 pontos anatômicos do rosto (olhos, nariz, boca, contorno mandibular).
-4. **Extração do Vetor Biométrico:** O modelo `faceRecognitionNet` transforma os marcos anatômicos em um **Face Descriptor** (vetor matemático numérico de 128 posições float).
-5. **Análise de Expressões / Emoções:** O modelo `faceExpressionNet` classifica em tempo real a emoção predominante (Neutro, Feliz, Surpreso, etc.).
+O acesso só é liberado quando as **duas condições** forem atendidas simultaneamente:
 
-### 2. Algoritmo de Identificação (Distância Euclidiana)
-A correspondência biométrica é baseada no cálculo da **Distância Euclidiana ($L_2$)** entre o vetor facial capturado pela câmera e os vetores armazenados no banco de dados SQLite:
+$$\text{ACESSO LIBERADO} \iff (\text{Liveness} = \text{APROVADO}) \land (\text{Pessoa} = \text{CADASTRADA NO BANCO})$$
 
-$$d(p, q) = \sqrt{\sum_{i=1}^{128} (p_i - q_i)^2}$$
+### Tabela Verdade de Decisão do Sistema
 
-- **Threshold de Tolerância:** Adotamos o limiar rigoroso de $\le 0.55$.
-- **Cálculo de Confiança:** A distância é convertida em uma porcentagem amigável de similaridade (ex.: 95% de precisão).
-- Se a distância for menor que o limiar, a pessoa é identificada instantaneamente com destaque visual; se for superior, é classificada de forma segura como *Não cadastrado*.
+| Liveness (Pessoa Real?) | Reconhecimento Facial (Cadastrado?) | Detecção | Decisão Final | Ação Visual |
+| :---: | :---: | :---: | :---: | :---: |
+| ✅ **Aprovado** | ✅ **Cadastrado** | Exatamente 1 face | 🟢 **ACESSO LIBERADO** | Destaque verde com nome, similaridade (%) e humor |
+| ✅ **Aprovado** | ❌ **Não Cadastrado** | Exatamente 1 face | 🟡 **ACESSO BLOQUEADO** | Alerta: *"Pessoa não cadastrada no sistema"* |
+| ❌ **Reprovado** | ⚠️ *Qualquer resultado* | 1 face estática | 🔴 **ACESSO BLOQUEADO** | Alerta: *"Não foi possível confirmar pessoa real (Anti-Spoofing)"* |
+| ⚠️ *Pendente* | ⚠️ *Pendente* | Mais de 1 face | 🔴 **ACESSO BLOQUEADO** | Alerta: *"Mais de um rosto detectado na câmera"* |
+| ⚠️ *Pendente* | ⚠️ *Pendente* | 0 faces | ⚪ **AGUARDANDO** | Instrução: *"Posicione-se diante da câmera"* |
 
-### 3. Persistência Estruturada com Prisma & SQLite
-- Modelagem no arquivo `prisma/schema.prisma` com o modelo `Person` contendo ID único (`cuid`), nome e o vetor `faceDescriptor` serializado em JSON.
-- Banco de dados leve e autônomo em arquivo local (`prisma/dev.db`), dispensando instalação e configuração de servidores externos de banco.
+> ⚠️ **Importante:** Fotografias enviadas no cadastro servem apenas para criar a referência biométrica. O fluxo de reconhecimento **não aceita upload de imagens** em hipótese alguma, exigindo a presença física diante da câmera.
+
+---
+
+## 🧠 Como o Projeto Foi Desenvolvido
+
+### 1. Processamento On-Device com Modelos Neurais
+O pipeline de visão computacional utiliza a `@vladmandic/face-api` (implementação otimizada do TensorFlow.js para navegadores), executando 4 redes neurais simultâneas em WebAssembly/WebGL:
+- **`ssdMobilenetv1`:** Detecção facial de alta acurácia com retorno de caixas delimitadoras (*bounding boxes*).
+- **`faceLandmark68Net`:** Mapeamento de 68 pontos anatômicos (olhos, sobrancelhas, nariz, lábios e contorno mandibular).
+- **`faceRecognitionNet`:** Extração do vetor biométrico **Face Descriptor** (vetor de 128 floats de alta dimensionalidade).
+- **`faceExpressionNet`:** Classificação em tempo real de expressões e humor (neutro, feliz, surpreso, etc.).
+
+### 2. Motor de Liveness / Anti-Spoofing
+Para impedir tentativas simples de spoofing (fotos em papel, fotografias em telas de celular ou monitores), implementamos uma camada de validação biométrica ativa e temporal baseada nos 68 landmarks anatômicos:
+- **Detecção de Piscar de Olhos (EAR - Eye Aspect Ratio):** Calcula a razão de aspecto dos olhos a partir dos pontos $(36..41)$ e $(42..47)$:
+  $$\text{EAR} = \frac{\|p_2 - p_6\| + \|p_3 - p_5\|}{2 \cdot \|p_1 - p_4\|}$$
+  O sistema rastreia o ciclo natural de piscar ($\text{EAR}_{\text{aberto}} \ge 0.24 \rightarrow \text{EAR}_{\text{fechado}} < 0.20 \rightarrow \text{EAR}_{\text{reaberto}} \ge 0.23$). Fotos estáticas e telas imóveis não conseguem reproduzir essa transição.
+- **Detecção de Rotação da Cabeça (Head Yaw Ratio):** Monitora a variação horizontal da ponta do nariz (ponto 30) em relação aos extremos da mandíbula (pontos 2 e 14).
+- **Detecção de Expressão e Sorriso:** Rastreia o alargamento da boca e microexpressões faciais genuínas.
+- **Temporizador de Inatividade:** Se um rosto for detectado, mas permanecer sem qualquer movimento natural por mais de 15 segundos, o Liveness é automaticamente **Reprovado**.
+
+### 3. Centralização do Limiar Biométrico (Threshold)
+A comparação de vetores faciais foi centralizada no módulo `lib/face-recognition.ts`, garantindo paridade total entre o frontend e a API REST:
+- **Limiar Padronizado:** `FACE_MATCH_THRESHOLD = 0.55` (padrão de máxima acurácia dlib/face-api).
+- **Métrica Euclidiana:** $d(p, q) = \sqrt{\sum_{i=1}^{128} (p_i - q_i)^2}$.
+- Distâncias $\le 0.55$ confirmam a mesma pessoa com cálculo ponderado de confiança ($50\%$ a $100\%$).
+
+---
+
+## 🌟 Funcionalidades Detalhadas
+
+### 📸 1. Cadastro por Foto (`/cadastro`)
+- **Upload de Imagem Facial:** Seleção por clique ou arrastar e soltar (*drag & drop*) de arquivos JPG, PNG ou WebP.
+- **Pré-visualização Instantânea:** Exibição da foto com renderização das marcações faciais (*landmarks*) no `<canvas>`.
+- **Validações Biométricas Automáticas:**
+  - *Nenhum rosto na imagem:* Exibe `"Não foi possível identificar um rosto na foto."`;
+  - *Mais de um rosto:* Exibe `"A foto deve conter apenas uma pessoa."`;
+  - *Rosto válido:* Exibe `"Rosto identificado. Cadastro facial pronto para ser salvo!"` e habilita a gravação.
+- **Alternativa via Webcam:** Permite alternar opcionalmente para captura direta por câmera.
+- **Persistência Segura:** Envia o nome e o vetor de 128 dimensões para o SQLite via `POST /api/persons`.
+
+### 🛡️ 2. Controle de Acesso com Liveness (`/reconhecer`)
+- **Acesso Exclusivo por Câmera:** Não permite envio de arquivos estáticos.
+- **Painel em Duas Etapas:**
+  1. *Etapa 1 (Liveness):* Instrução ativa na tela (*"Pisque os olhos ou sorria"*);
+  2. *Etapa 2 (Banco SQLite):* Identificação instantânea da pessoa autorizada.
+- **Card de Decisão Final:**
+  - 🟢 **ACESSO LIBERADO:** Exibe nome completo, similaridade facial (ex.: 98%), prova de Liveness realizada e humor detectado.
+  - 🟡 **ACESSO BLOQUEADO (Não cadastrado):** Alerta que a presença é real, mas o usuário não consta na base autorizada.
+  - 🔴 **ACESSO BLOQUEADO (Liveness reprovado):** Alerta de ausência de movimento facial natural (possível tentativa de foto/spoofing).
+- **Botão "Nova Verificação":** Reinicia o ciclo para o próximo usuário sem necessidade de recarregar a página.
+- **Histórico da Sessão:** Registra todas as tentativas de liberação ou bloqueio com horários, motivos e expressões detectadas.
+
+### 👥 3. Gerenciamento de Cadastros (`/cadastros`)
+- Listagem completa de biometrias registradas com paginação e busca instantânea por nome.
+- Edição do nome da pessoa sem alterar o vetor biométrico.
+- Exclusão definitiva de registros no SQLite com modal de confirmação.
 
 ---
 
 ## 📱 Aplicação PWA (Progressive Web App)
 
-O sistema foi arquitetado como uma **PWA completa**, permitindo que ele seja instalado como aplicativo nativo em computadores (Windows, macOS, Linux) e dispositivos móveis (Android, iOS).
-
-### Principais recursos PWA implementados:
-- **Instalação com 1 Clique (Banner Customizado):** Criamos o componente reativo `InstallPwaPrompt.tsx` que intercepta o evento nativo `beforeinstallprompt` do navegador e apresenta um card moderno de instalação flutuante na tela inicial.
-- **Cache Inteligente de Modelos Neurais (`CacheFirst`):** Através do pacote `@ducanh2912/next-pwa` integrado ao `next.config.mjs`, configuramos o Workbox com uma estratégia `CacheFirst` para todos os pesos e binários dos modelos em `/models/*` com expiração de 30 dias. Com isso, os modelos de IA carregam instantaneamente mesmo em conexões lentas.
-- **Manifest Completo (`manifest.json`):**
-  - Configuração de `display: standalone` (remove barras do navegador e roda como app nativo).
-  - Ícones adaptativos com suporte a `maskable` (192x192 e 512x512).
-  - Cores temáticas (`theme_color: #4f46e5`, `background_color: #f8fafc`).
-  - **Atalhos Rápidos (Shortcuts):** Acesso direto às telas de *Reconhecimento*, *Cadastrar Pessoa* e *Ver Cadastros* pelo menu de contexto do ícone no sistema operacional.
-- **Página de Contingência Offline:** Página dedicada `app/~offline/page.tsx` informando o usuário com opções de reconexão caso a rede caia.
-
----
-
-## 🌟 Funcionalidades do Sistema
-
-- **Reconhecimento Facial em Tempo Real (`/reconhecer`):**
-  - Varredura contínua e suave via `requestAnimationFrame`.
-  - Caixa delimitadora (*bounding box*) dinâmica sobre o rosto no `<canvas>`.
-  - Exibição de nome identificado, taxa de confiança percentual e detecção de expressão facial.
-  - Histórico lateral em tempo real com as últimas pessoas detectadas.
-  - Alertas visuais e sonoros para: *Nenhum rosto encontrado*, *Múltiplos rostos* e *Rosto não reconhecido*.
-
-- **Cadastro Facial via Webcam (`/cadastro`):**
-  - Assistente com validações estritas (bloqueia captura se houver 0 ou mais de 1 rosto no enquadramento).
-  - Feedback visual intuitivo (guia oval de posicionamento do rosto).
-  - Extração do descritor de 128 dimensões e gravação direta no SQLite.
-
-- **Gerenciamento de Cadastros (`/cadastros`):**
-  - Listagem completa em cards com foto/avatar e data de criação.
-  - Campo de busca instantânea com filtro por nome.
-  - Edição in-place do nome da pessoa sem corromper a biometria.
-  - Exclusão com diálogo de confirmação.
-
-- **Interface Moderna (Light Theme):**
-  - Paleta limpa em tons de branco, ardósia e azul índigo (`#4f46e5`).
-  - Totalmente responsivo para celulares, tablets e monitores desktop.
+- **Instalação com 1 Clique:** Prompt personalizado via componente `InstallPwaPrompt.tsx`.
+- **Cache Inteligente de Modelos Neurais (`CacheFirst`):** Os pesos dos modelos de IA (`/models/*`) ficam cacheados no Service Worker por 30 dias.
+- **Execução Standalone:** Funciona como app desktop ou mobile sem barras de endereço do navegador.
+- **Contingência Offline:** Página dedicada `app/~offline/page.tsx`.
 
 ---
 
 ## 🛠️ Stack Tecnológica
 
-| Camada | Tecnologia | Descrição |
+| Camada | Tecnologia | Finalidade |
 | :--- | :--- | :--- |
-| **Framework Full-Stack** | Next.js 14 (App Router) | Renderização híbrida (Server & Client Components) e API Routes |
-| **Biblioteca de UI** | React 18 | Interfaces declarativas e reativas com Hooks |
-| **Linguagem** | TypeScript 5 | Tipagem estática e segurança de tipos de ponta a ponta |
-| **Visão Computacional & IA** | `@vladmandic/face-api` | Fork otimizado com modelos SSD MobileNet v1, Landmarks 68 e Reconhecimento |
-| **PWA & Service Worker** | `@ducanh2912/next-pwa` + Workbox | Suporte PWA, manifest, instalação standalone e cache offline |
-| **ORM & Banco de Dados** | Prisma ORM + SQLite local | Modelagem de dados e persistência sem dependência de nuvem |
-| **Estilização** | Tailwind CSS 3 | Utility-first CSS com design system claro e responsivo |
-| **Iconografia** | Lucide React | Ícones SVG limpos e consistentes |
+| **Framework Full-Stack** | Next.js 14 (App Router) | Renderização híbrida, páginas dinâmicas e API Routes |
+| **Biblioteca de UI** | React 18 | Interfaces declarativas e hooks de estado em tempo real |
+| **Linguagem** | TypeScript 5 | Tipagem estática e segurança de ponta a ponta |
+| **Visão Computacional & IA** | `@vladmandic/face-api` | Modelos SSD MobileNet, 68 Landmarks, Reconhecimento e Expressões |
+| **Módulo Biométrico** | `lib/face-recognition.ts` | Lógica centralizada de matching euclidiano e limiares |
+| **ORM & Banco de Dados** | Prisma 5 + SQLite local | Persistência local em arquivo (`prisma/dev.db`) com isolamento |
+| **PWA & Service Worker** | `@ducanh2912/next-pwa` + Workbox | Cache offline e suporte a aplicativo instalável |
+| **Estilização** | Tailwind CSS 3 | Design limpo em tema claro (*Light Theme*), moderno e responsivo |
+| **Iconografia** | Lucide React | Ícones SVG consistentes |
 
 ---
 
-## 📂 Estrutura do Projeto
+## 📂 Estrutura de Diretórios
 
 ```text
 ├── app/
 │   ├── api/
-│   │   ├── persons/        # Endpoints REST (CRUD de pessoas cadastradas)
-│   │   ├── recognize/      # Endpoint para validações de matching biométrico
-│   │   └── stats/          # Métricas e contagem de registros
-│   ├── cadastro/           # Página de captura e cadastro facial
-│   ├── cadastros/          # Página de gerenciamento de usuários
-│   ├── reconhecer/         # Página de reconhecimento facial em tempo real
-│   ├── ~offline/           # Página de fallback offline da PWA
-│   ├── globals.css         # Estilos globais e Tailwind CSS
-│   ├── layout.tsx          # Layout raiz com Navbar e Prompt PWA
-│   └── page.tsx            # Dashboard inicial (Home)
+│   │   ├── persons/            # CRUD de pessoas (validação estrita do vetor 128D)
+│   │   │   └── [id]/           # Edição e exclusão individual de registros
+│   │   ├── recognize/          # Endpoint REST de reconhecimento facial
+│   │   └── stats/              # Estatísticas de cadastros
+│   ├── cadastro/               # Cadastro por upload de foto com validação facial
+│   ├── cadastros/              # Gerenciamento de registros cadastrados
+│   ├── reconhecer/             # Câmera de acesso com Liveness e decisão de autorização
+│   ├── ~offline/               # Página de contingência offline
+│   ├── layout.tsx              # Layout base com Navbar e PWA
+│   └── page.tsx                # Dashboard principal
 ├── components/
-│   ├── CameraView.tsx              # Componente de câmera para cadastro
-│   ├── RecognitionCameraView.tsx   # Loop de reconhecimento em tempo real com Canvas
-│   ├── InstallPwaPrompt.tsx        # Banner de instalação do aplicativo PWA
-│   ├── Navbar.tsx                  # Barra de navegação responsiva
-│   └── Modal.tsx                   # Modal reutilizável de confirmação e edição
+│   ├── RecognitionCameraView.tsx # Motor de câmera com Liveness (EAR/Blink) e canvas
+│   ├── CameraView.tsx          # Componente de câmera para cadastro opcional
+│   ├── InstallPwaPrompt.tsx    # Banner de instalação do aplicativo PWA
+│   ├── Navbar.tsx              # Barra de navegação principal
+│   └── Modal.tsx               # Modal de confirmação e edição
 ├── lib/
-│   ├── face-api.ts         # Carregamento singleton dos modelos de IA e utilitários
-│   └── prisma.ts           # Instância singleton do Prisma Client
+│   ├── face-api.ts             # Carregamento dos modelos neurais e detecção em imagens
+│   ├── face-recognition.ts     # Centralização do limiar (0.55) e cálculo de similaridade
+│   ├── validation.ts           # Validações estruturais de dados e vetores
+│   └── prisma.ts               # Cliente singleton do Prisma
 ├── prisma/
-│   ├── schema.prisma       # Definição do modelo de dados
-│   └── dev.db              # Banco de dados SQLite local
+│   ├── schema.prisma           # Esquema do banco de dados SQLite
+│   └── dev.db                  # Banco de dados SQLite físico local
 ├── public/
-│   ├── cover.png           # Imagem de capa do projeto
-│   ├── manifest.json       # Manifesto PWA da aplicação
-│   ├── icons/              # Ícones PWA e Favicons (192px, 512px, maskable)
-│   └── models/             # Pesos e arquivos binários dos modelos neurais
+│   ├── models/                 # Pesos das redes neurais pré-treinadas
+│   ├── manifest.json           # Manifesto PWA da aplicação
+│   └── icons/                  # Ícones PWA e favicons
 ├── scripts/
-│   └── test-recognition.mjs # Suíte de testes ponta a ponta automatizados
-├── next.config.mjs         # Configurações do Next.js e Workbox PWA
-└── package.json            # Dependências e scripts do projeto
+│   ├── test-liveness-auth.mjs  # Testes das regras de Liveness e tabela verdade de acesso
+│   ├── test-recognition.mjs    # Testes de integração de rotas e matching biométrico
+│   └── test-system.mjs         # Testes de ponta a ponta do banco e CRUD
+├── next.config.mjs             # Configurações do Next.js, PWA e filtros do Webpack
+└── package.json                # Dependências e scripts do projeto
 ```
 
 ---
@@ -152,8 +179,8 @@ O sistema foi arquitetado como uma **PWA completa**, permitindo que ele seja ins
 
 ### Pré-requisitos
 - **Node.js** (versão 18.18+ ou 20+)
-- **NPM** ou gerenciador de pacotes equivalente
-- Câmera / Webcam conectada ao computador
+- **NPM** instalado
+- Câmera / Webcam conectada (para o fluxo de acesso)
 
 ### 1. Clonar o repositório e entrar na pasta
 ```bash
@@ -166,11 +193,10 @@ cd reconhecimento_facial_next-js
 npm install
 ```
 
-### 3. Gerar e inicializar o banco de dados SQLite
+### 3. Sincronizar o banco de dados SQLite
 ```bash
-npx prisma migrate dev
+npx prisma db push
 ```
-*(ou `npx prisma db push` para sincronizar o schema)*
 
 ### 4. Executar em modo de desenvolvimento
 ```bash
@@ -182,39 +208,36 @@ Abra em seu navegador:
 
 ---
 
-## 📱 Como Instalar a PWA
-
-1. Abra o sistema no **Google Chrome**, **Microsoft Edge** ou **Safari** (iOS).
-2. Na página inicial, repare no banner no canto inferior direito: **"Instalar Aplicativo"**.
-3. Clique em **Instalar** (ou no ícone de instalação na barra de endereços do navegador).
-4. O sistema será adicionado à sua tela inicial / lista de aplicativos nativos, podendo ser executado em janela própria sem bordas de navegador.
-
----
-
 ## 🧪 Testes Automatizados
 
-O repositório inclui um script para testes automatizados dos endpoints e lógica biométrica:
+O projeto inclui três suítes de testes automatizados:
 
+### 1. Teste de Liveness e Regras de Autorização
+Valida a lógica matemática de matching, o limiar de $0.55$ e todas as combinações da tabela verdade de acesso:
+```bash
+node --experimental-strip-types scripts/test-liveness-auth.mjs
+```
+
+### 2. Teste de Reconhecimento e Integração de Rotas
 ```bash
 node scripts/test-recognition.mjs
 ```
 
-**Cenários validados:**
-- Resposta com status 200 para todas as rotas principais (`/`, `/reconhecer`, `/cadastro`, `/cadastros`);
-- Reconhecimento facial com 100% de precisão para descritores idênticos;
-- Reconhecimento tolerante com variações de iluminação e ruído biométrico leve;
-- Rejeição segura para pessoas não cadastradas;
-- Validação do endpoint REST de estatísticas e busca.
+### 3. Teste Completo de Persistência e CRUD
+```bash
+node scripts/test-system.mjs
+```
 
 ---
 
-## 🔒 Privacidade e Segurança
-- Nenhuma imagem ou vídeo de usuário é gravado em disco ou transmitido pela internet.
-- Apenas os pontos matemáticos (Face Descriptors) são armazenados localmente no banco `dev.db`.
-- O processamento de inteligência artificial roda 100% local no hardware da máquina do usuário.
+## 🔒 Privacidade e Conformidade com a LGPD
+
+- **Sem Nuvem para Biometria:** Nenhum frame de vídeo ou foto do usuário é transmitido para serviços em nuvem.
+- **Armazenamento Minimalista:** As fotos de acesso não são guardadas; apenas a referência matemática vetorial (128 floats) é persistida no SQLite.
+- **Execução Local:** Toda a inferência de inteligência artificial roda no hardware local do usuário.
 
 ---
 
 <p align="center">
-  Desenvolvido com foco em alta precisão, privacidade e experiência de usuário fluida.
+  Desenvolvido com foco em alta segurança, validação de vivacidade (*anti-spoofing*) e privacidade de ponta a ponta.
 </p>
