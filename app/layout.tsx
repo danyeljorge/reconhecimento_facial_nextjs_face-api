@@ -42,14 +42,9 @@ export default function RootLayout({
     <html lang="pt-BR">
       <body className="bg-slate-50 text-slate-900 min-h-screen flex flex-col antialiased selection:bg-indigo-500 selection:text-white">
         <Navbar />
-        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex-1 flex flex-col w-full">
           {children}
-        </main>
-        <footer className="border-t border-slate-200 bg-white py-6 text-center text-xs text-slate-500">
-          <p>
-            Sistema de Reconhecimento Facial • Biometria em Tempo Real (SQLite + Prisma + face-api)
-          </p>
-        </footer>
+        </div>
         <InstallPwaPrompt />
       </body>
     </html>

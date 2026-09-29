@@ -197,12 +197,11 @@ export async function detectFacesInVideo(
 
   const options = new faceapi.SsdMobilenetv1Options({ minConfidence });
 
-  // Detecta faces com landmarks, descriptors e expressões de humor
+  // Detecta faces com landmarks e expressões de humor (omite descritores 128D no vídeo para maior performance)
   const results = await faceapi
     .detectAllFaces(videoElement, options)
     .withFaceLandmarks()
-    .withFaceExpressions()
-    .withFaceDescriptors();
+    .withFaceExpressions();
 
   const faceCount = results.length;
 
@@ -220,7 +219,7 @@ export async function detectFacesInVideo(
 
     return {
       faceCount: 1,
-      descriptor: Array.from(single.descriptor),
+      descriptor: null,
       emotion: dominantEmotion,
       detection: single,
       allDetections: results.map((r) => r.detection),
@@ -249,6 +248,7 @@ export interface LivenessMetrics {
   isBlinking: boolean;
   isTurningLeft: boolean;
   isTurningRight: boolean;
+  isCentered: boolean;
   isSmiling: boolean;
 }
 
@@ -277,6 +277,7 @@ export function calculateLivenessMetrics(
       isBlinking: false,
       isTurningLeft: false,
       isTurningRight: false,
+      isCentered: true,
       isSmiling: false,
     };
   }
@@ -295,8 +296,8 @@ export function calculateLivenessMetrics(
   const rightEAR = (rightEyeHeight1 + rightEyeHeight2) / (2.0 * (rightEyeWidth || 1));
 
   const ear = (leftEAR + rightEAR) / 2.0;
-  // Se EAR < 0.21, o olho está fechado (piscando)
-  const isBlinking = ear < 0.21;
+  // Se EAR < 0.238, o olho está fechado (piscando)
+  const isBlinking = ear < 0.238;
 
   // 2. Head Yaw (Proporção de rotação horizontal da cabeça)
   // Ponto 30 é a ponta do nariz. Pontos 2 e 14 são os extremos da mandíbula.
@@ -307,14 +308,15 @@ export function calculateLivenessMetrics(
 
   // Como a câmera espelha o usuário:
   // Virar para a esquerda do usuário faz a distância da bochecha esquerda diminuir
-  const isTurningLeft = yawRatio < 0.55;
-  const isTurningRight = yawRatio > 1.85;
+  const isTurningLeft = yawRatio < 0.58;
+  const isTurningRight = yawRatio > 1.75;
+  const isCentered = yawRatio >= 0.70 && yawRatio <= 1.40;
 
   // 3. Sorriso (Expressão / Landmarks da boca)
   const mouthWidth = dist2D(pts[48], pts[54]);
   const eyeDistance = dist2D(pts[36], pts[45]);
   const mouthRatio = mouthWidth / (eyeDistance || 1);
-  const isSmiling = (expressions?.happy ?? 0) > 0.6 || mouthRatio > 0.95;
+  const isSmiling = (expressions?.happy ?? 0) > 0.50 || mouthRatio > 0.90;
 
   return {
     ear,
@@ -323,7 +325,10 @@ export function calculateLivenessMetrics(
     isBlinking,
     isTurningLeft,
     isTurningRight,
+    isCentered,
     isSmiling,
   };
 }
+
+export * from "@/lib/liveness/liveness-engine";
 

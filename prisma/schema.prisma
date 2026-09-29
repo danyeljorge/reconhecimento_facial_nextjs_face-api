@@ -14,3 +14,18 @@ model Person {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  cpf          String   @unique
+  siap         String   @unique
+  userType     String   // Graduação, Pós-graduação, Professor, Servidor
+  email        String   @unique
+  passwordHash String
+  faceImage    String?  // Armazenamento da imagem no SQL após reconhecimento pós-login
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+

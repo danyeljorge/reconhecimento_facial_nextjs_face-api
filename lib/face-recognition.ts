@@ -1,9 +1,18 @@
-// Centralização de constantes e funções de matching facial
+/**
+ * @deprecated LEGACY / DESATIVADO NO MVP
+ * 
+ * ATENÇÃO ARQUITETURAL:
+ * O sistema de autenticação deste MVP NÃO utiliza Face Descriptor para identificação.
+ * A autenticação do usuário é realizada exclusivamente via CPF e Senha.
+ * A verificação facial pós-login tem propósito estrito de Prova de Vida (Liveness/Anti-Spoofing).
+ * As funções abaixo permanecem isoladas aqui apenas como referência de implementações anteriores.
+ */
 
 export const FACE_MATCH_THRESHOLD = 0.55;
 
 /**
- * Cálculo da distância euclidiana entre dois vetores de 128 dimensões
+ * @deprecated Cálculo da distância euclidiana entre dois vetores de 128 dimensões.
+ * Não utilizado na autenticação nem no liveness.
  */
 export function euclideanDistance(v1: number[], v2: number[]): number {
   if (v1.length !== v2.length) return Infinity;
