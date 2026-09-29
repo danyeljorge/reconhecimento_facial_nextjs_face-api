@@ -1,7 +1,12 @@
 # 👁️ Sistema de Reconhecimento Facial & Controle de Acesso com Liveness (Anti-Spoofing)
 
 <p align="center">
-  <img src="./public/cover.png" alt="Capa do Sistema de Reconhecimento Facial" width="100%" style="border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.12);" />
+  <img src="./public/cover.png" alt="Capa Desktop do Sistema de Reconhecimento Facial" width="67%" style="border-radius: 12px; vertical-align: middle; box-shadow: 0 8px 30px rgba(0,0,0,0.12);" />
+  &nbsp;&nbsp;
+  <img src="./public/cover-mobile.png" alt="Capa Mobile (PWA)" width="28%" style="border-radius: 12px; vertical-align: middle; box-shadow: 0 8px 30px rgba(0,0,0,0.12);" />
+</p>
+<p align="center">
+  <em>Interfaces Desktop e Mobile (PWA Instalável) do Sistema de Reconhecimento Facial e Controle de Acesso</em>
 </p>
 
 <p align="center">
@@ -19,100 +24,132 @@
 
 ## 📌 Sobre o Projeto
 
-O **Sistema de Reconhecimento Facial** é uma aplicação web moderna e progressiva (PWA) de controle de acesso biométrico de alta segurança e precisão.
+O **Sistema de Reconhecimento Facial & Controle de Acesso com Liveness** é uma solução web moderna e progressiva (PWA) para identificação, autenticação em duas etapas e auditoria de presença física.
 
-A arquitetura do sistema é dividida em dois momentos completamente distintos e desacoplados:
+O sistema combina **autenticação segura por credenciais (CPF + Senha criptografada)** com uma barreira biométrica ativa de **Vivacidade (*Liveness / Proof of Life*)** executada diretamente no navegador via **Client-Side AI**.
 
-1. **Momento 1 — Cadastro por Foto:** O usuário cadastra uma pessoa enviando uma imagem/fotografia. O sistema valida se há **exatamente 1 rosto**, gera a referência biométrica (*Face Descriptor* de 128 dimensões) e a armazena no banco de dados SQLite local.
-2. **Momento 2 — Acesso Exclusivo via Câmera com Liveness (Anti-Spoofing):** Para obter autorização de entrada, o acesso deve ser feito **obrigatoriamente pela câmera ao vivo**. O sistema executa primeiro uma validação ativa de vivacidade (*Liveness*) para confirmar que se trata de uma pessoa real diante da lente (impedindo fraudes por fotos impressas, telas ou vídeos) e, somente após a aprovação do Liveness, compara a biometria com os registros do banco de dados.
+### Principais Pilares da Solução
 
-Todo o processamento neural ocorre **100% no navegador (Client-Side AI)**, garantindo total privacidade, conformidade com a LGPD e latência ultrabaixa.
-
----
-
-## 🛡️ Regra Fundamental de Autorização de Acesso
-
-O acesso só é liberado quando as **duas condições** forem atendidas simultaneamente:
-
-$$\text{ACESSO LIBERADO} \iff (\text{Liveness} = \text{APROVADO}) \land (\text{Pessoa} = \text{CADASTRADA NO BANCO})$$
-
-### Tabela Verdade de Decisão do Sistema
-
-| Liveness (Pessoa Real?) | Reconhecimento Facial (Cadastrado?) | Detecção | Decisão Final | Ação Visual |
-| :---: | :---: | :---: | :---: | :---: |
-| ✅ **Aprovado** | ✅ **Cadastrado** | Exatamente 1 face | 🟢 **ACESSO LIBERADO** | Destaque verde com nome, similaridade (%) e humor |
-| ✅ **Aprovado** | ❌ **Não Cadastrado** | Exatamente 1 face | 🟡 **ACESSO BLOQUEADO** | Alerta: *"Pessoa não cadastrada no sistema"* |
-| ❌ **Reprovado** | ⚠️ *Qualquer resultado* | 1 face estática | 🔴 **ACESSO BLOQUEADO** | Alerta: *"Não foi possível confirmar pessoa real (Anti-Spoofing)"* |
-| ⚠️ *Pendente* | ⚠️ *Pendente* | Mais de 1 face | 🔴 **ACESSO BLOQUEADO** | Alerta: *"Mais de um rosto detectado na câmera"* |
-| ⚠️ *Pendente* | ⚠️ *Pendente* | 0 faces | ⚪ **AGUARDANDO** | Instrução: *"Posicione-se diante da câmera"* |
-
-> ⚠️ **Importante:** Fotografias enviadas no cadastro servem apenas para criar a referência biométrica. O fluxo de reconhecimento **não aceita upload de imagens** em hipótese alguma, exigindo a presença física diante da câmera.
+1. **Autenticação em Dois Fatores (2FA: Credenciais + Biometria Viva):**
+   - **Fator 1 (Credenciais):** O usuário se autentica com CPF e Senha protegidos por hash PBKDF2/SHA256, gerando uma sessão criptografada em cookie HTTP-Only.
+   - **Fator 2 (Liveness & Anti-Spoofing):** No Dashboard, o usuário deve passar obrigatoriamente por uma verificação de vivacidade interativa via câmera para desbloquear as áreas restritas (Extrato, Perfil e Serviços).
+2. **Motor de Liveness e Detecção de Ataques de Apresentação (PAD):**
+   - Gera desafios biométricos aleatórios (*Anti-Replay*) como piscar de olhos, rotação da cabeça (Yaw) e sorrisos.
+   - Analisa a variância temporal de múltiplos frames para rejeitar fotos estáticas impressas, telas digitais ou vídeos pré-gravados.
+3. **Dashboard Completo do Usuário:**
+   - **Reconhecimento / Câmera:** Monitoramento em tempo real da validação de vivacidade com feedback dinâmico.
+   - **Extrato Financeiro / Acessos:** Visualização detalhada de lançamentos, saldo e histórico de utilização.
+   - **Perfil Cadastral:** Informações completas (Nome, CPF formatado, SIAP, Vínculo Acadêmico/Profissional e foto validada).
+4. **Gerenciamento Administrativo de Cadastros:**
+   - Listagem completa, busca em tempo real por múltiplos campos, indicador de biometria validada, criação e exclusão com segurança.
+5. **Privacidade e Conformidade LGPD (100% Client-Side AI):**
+   - O processamento das redes neurais ocorre inteiramente no hardware local do usuário via WebAssembly/WebGL com `@vladmandic/face-api`, sem envio de vídeo ou fluxo contínuo para servidores externos.
 
 ---
 
-## 🧠 Como o Projeto Foi Desenvolvido
+## 🔄 Fluxo de Acesso e Arquitetura
 
-### 1. Processamento On-Device com Modelos Neurais
-O pipeline de visão computacional utiliza a `@vladmandic/face-api` (implementação otimizada do TensorFlow.js para navegadores), executando 4 redes neurais simultâneas em WebAssembly/WebGL:
-- **`ssdMobilenetv1`:** Detecção facial de alta acurácia com retorno de caixas delimitadoras (*bounding boxes*).
-- **`faceLandmark68Net`:** Mapeamento de 68 pontos anatômicos (olhos, sobrancelhas, nariz, lábios e contorno mandibular).
-- **`faceRecognitionNet`:** Extração do vetor biométrico **Face Descriptor** (vetor de 128 floats de alta dimensionalidade).
-- **`faceExpressionNet`:** Classificação em tempo real de expressões e humor (neutro, feliz, surpreso, etc.).
+```mermaid
+flowchart TD
+    A[Acesso à Plataforma] --> B{Possui Conta?}
+    B -- Não --> C[Cadastro de Usuário /cadastro\nNome, CPF, SIAP, Vínculo, Senha]
+    C --> D[Armazenamento Seguro no SQLite]
+    D --> E[Login com CPF e Senha]
+    B -- Sim --> E
+    E --> F[Validação de Credenciais Hash PBKDF2]
+    F --> G[Criação de Sessão HTTP-Only Segura]
+    G --> H[Redirecionamento ao Dashboard /dashboard]
+    H --> I[Barreira Biométrica: Desafio de Liveness]
+    I --> J{Liveness Aprovado?}
+    J -- Não (Foto/Tela/Tempo Esgotado) --> K[Acesso Restrito Bloqueado\nOpção de Repetir Verificação]
+    J -- Sim (Pessoa Real com Movimento) --> L[Salva Foto Biométrica no Perfil]
+    L --> M[Desbloqueio Completo: Extrato & Perfil]
+```
 
-### 2. Motor de Liveness / Anti-Spoofing
-Para impedir tentativas simples de spoofing (fotos em papel, fotografias em telas de celular ou monitores), implementamos uma camada de validação biométrica ativa e temporal baseada nos 68 landmarks anatômicos:
-- **Detecção de Piscar de Olhos (EAR - Eye Aspect Ratio):** Calcula a razão de aspecto dos olhos a partir dos pontos $(36..41)$ e $(42..47)$:
+---
+
+## 🧠 Motor de Liveness & Anti-Spoofing (`lib/liveness/liveness-engine.ts`)
+
+A validação de vivacidade foi desenvolvida para barrar ataques de apresentação (fotos estáticas impressas, telas de smartphone, tablets ou monitores) sem depender de APIs externas pagas.
+
+### 1. Cálculos Biométricos em Tempo Real (68 Landmarks)
+
+O sistema extrai 68 coordenadas anatômicas faciais a cada frame e calcula métricas geométricas normalizadas:
+
+- **EAR (Eye Aspect Ratio):** Mede a razão entre as distâncias verticais e horizontais dos olhos para rastrear o ciclo biológico de piscar:
   $$\text{EAR} = \frac{\|p_2 - p_6\| + \|p_3 - p_5\|}{2 \cdot \|p_1 - p_4\|}$$
-  O sistema rastreia o ciclo natural de piscar ($\text{EAR}_{\text{aberto}} \ge 0.24 \rightarrow \text{EAR}_{\text{fechado}} < 0.20 \rightarrow \text{EAR}_{\text{reaberto}} \ge 0.23$). Fotos estáticas e telas imóveis não conseguem reproduzir essa transição.
-- **Detecção de Rotação da Cabeça (Head Yaw Ratio):** Monitora a variação horizontal da ponta do nariz (ponto 30) em relação aos extremos da mandíbula (pontos 2 e 14).
-- **Detecção de Expressão e Sorriso:** Rastreia o alargamento da boca e microexpressões faciais genuínas.
-- **Temporizador de Inatividade:** Se um rosto for detectado, mas permanecer sem qualquer movimento natural por mais de 15 segundos, o Liveness é automaticamente **Reprovado**.
+  O motor rastreia a transição contínua: $\text{Olho Aberto} \rightarrow \text{Olhos Fechando} (\text{EAR} < 0.238) \rightarrow \text{Reabertura}$, confirmando a piscada natural.
+- **Head Yaw Ratio (Rotação Horizontal):** Razão entre a posição do nariz (ponto 30) e os extremos mandibulares (pontos 2 e 14) para detectar se o usuário virou a cabeça para a esquerda ou direita:
+  $$\text{Yaw Ratio} = \frac{|x_{\text{nariz}} - x_{\text{mandíbula esquerda}}|}{|x_{\text{mandíbula direita}} - x_{\text{nariz}}|}$$
+- **Mouth Ratio & Expressões:** Razão entre a largura da comissura labial (pontos 48 e 54) e a distância interocular, combinada com a rede neural `faceExpressionNet` para detecção de sorrisos.
+- **Centroide:** Ponto médio ponderado das 68 marcações para aferir estabilidade de enquadramento.
 
-### 3. Centralização do Limiar Biométrico (Threshold)
-A comparação de vetores faciais foi centralizada no módulo `lib/face-recognition.ts`, garantindo paridade total entre o frontend e a API REST:
-- **Limiar Padronizado:** `FACE_MATCH_THRESHOLD = 0.55` (padrão de máxima acurácia dlib/face-api).
-- **Métrica Euclidiana:** $d(p, q) = \sqrt{\sum_{i=1}^{128} (p_i - q_i)^2}$.
-- Distâncias $\le 0.55$ confirmam a mesma pessoa com cálculo ponderado de confiança ($50\%$ a $100\%$).
+### 2. Desafios Dinâmicos Multietapas (Anti-Replay)
 
----
+Para evitar vídeos pré-gravados, cada sessão de liveness sorteia uma sequência imprevisível de desafios que devem ser cumpridos em ordem:
+- `look_center`: Centralizar o rosto e olhar para a câmera;
+- `blink_twice`: Piscar os olhos naturalmente diante da lente;
+- `turn_left`: Virar o rosto suavemente para a esquerda;
+- `turn_right`: Virar o rosto suavemente para a direita;
+- `smile`: Sorrir para a câmera;
+- `return_center` e `return_neutral`: Retornar à posição frontal e expressão neutra.
 
-## 🌟 Funcionalidades Detalhadas
+### 3. Detecção de Ataques de Apresentação (PAD - Presentation Attack Detection)
 
-### 📸 1. Cadastro por Foto (`/cadastro`)
-- **Upload de Imagem Facial:** Seleção por clique ou arrastar e soltar (*drag & drop*) de arquivos JPG, PNG ou WebP.
-- **Pré-visualização Instantânea:** Exibição da foto com renderização das marcações faciais (*landmarks*) no `<canvas>`.
-- **Validações Biométricas Automáticas:**
-  - *Nenhum rosto na imagem:* Exibe `"Não foi possível identificar um rosto na foto."`;
-  - *Mais de um rosto:* Exibe `"A foto deve conter apenas uma pessoa."`;
-  - *Rosto válido:* Exibe `"Rosto identificado. Cadastro facial pronto para ser salvo!"` e habilita a gravação.
-- **Alternativa via Webcam:** Permite alternar opcionalmente para captura direta por câmera.
-- **Persistência Segura:** Envia o nome e o vetor de 128 dimensões para o SQLite via `POST /api/persons`.
-
-### 🛡️ 2. Controle de Acesso com Liveness (`/reconhecer`)
-- **Acesso Exclusivo por Câmera:** Não permite envio de arquivos estáticos.
-- **Painel em Duas Etapas:**
-  1. *Etapa 1 (Liveness):* Instrução ativa na tela (*"Pisque os olhos ou sorria"*);
-  2. *Etapa 2 (Banco SQLite):* Identificação instantânea da pessoa autorizada.
-- **Card de Decisão Final:**
-  - 🟢 **ACESSO LIBERADO:** Exibe nome completo, similaridade facial (ex.: 98%), prova de Liveness realizada e humor detectado.
-  - 🟡 **ACESSO BLOQUEADO (Não cadastrado):** Alerta que a presença é real, mas o usuário não consta na base autorizada.
-  - 🔴 **ACESSO BLOQUEADO (Liveness reprovado):** Alerta de ausência de movimento facial natural (possível tentativa de foto/spoofing).
-- **Botão "Nova Verificação":** Reinicia o ciclo para o próximo usuário sem necessidade de recarregar a página.
-- **Histórico da Sessão:** Registra todas as tentativas de liberação ou bloqueio com horários, motivos e expressões detectadas.
-
-### 👥 3. Gerenciamento de Cadastros (`/cadastros`)
-- Listagem completa de biometrias registradas com paginação e busca instantânea por nome.
-- Edição do nome da pessoa sem alterar o vetor biométrico.
-- Exclusão definitiva de registros no SQLite com modal de confirmação.
+Antes de emitir o veredito positivo, o motor avalia o histórico temporal dos frames coletados:
+- **Variância de Movimento Involuntário (Jitter Biológico):** Um ser humano vivo apresenta micro-variações naturais na musculatura e posição. Se o EAR e o Yaw apresentarem variância matemática próxima a zero durante a sessão, o sistema identifica uma foto estática e **reprova com alerta de Spoofing**.
+- **Ritmo Temporal Plausível:** O sistema exige no mínimo 15 frames analisados e tempo total superior a 1,2 segundos para impedir injeções artificiais de frames acelerados.
+- **Temporizador de 60 Segundos:** Contagem regressiva ativa com encerramento automático caso não haja interação.
 
 ---
 
-## 📱 Aplicação PWA (Progressive Web App)
+## 🌟 Módulos e Telas da Aplicação
 
-- **Instalação com 1 Clique:** Prompt personalizado via componente `InstallPwaPrompt.tsx`.
-- **Cache Inteligente de Modelos Neurais (`CacheFirst`):** Os pesos dos modelos de IA (`/models/*`) ficam cacheados no Service Worker por 30 dias.
-- **Execução Standalone:** Funciona como app desktop ou mobile sem barras de endereço do navegador.
-- **Contingência Offline:** Página dedicada `app/~offline/page.tsx`.
+### 🔐 1. Página Inicial & Autenticação (`/`)
+- Formulário de acesso minimalista por **CPF** e **Senha**.
+- Máscara dinâmica de formatação para CPF (`000.000.000-00`).
+- Atalho para o fluxo de cadastro e verificação automática de sessão ativa para redirecionamento direto ao dashboard.
+
+### 📝 2. Fluxo de Cadastro de Usuário (`/cadastro`)
+- Cadastro guiado com validações em tempo real:
+  - **Nome Completo:** Validação de tamanho mínimo;
+  - **CPF:** Validação algorítmica completa de 11 dígitos com cálculo dos dígitos verificadores (rejeita CPFs inválidos ou sequências repetidas como `111.111.111-11`);
+  - **SIAP:** Identificador funcional/acadêmico obrigatório;
+  - **Tipo de Usuário:** Seleção entre *Graduação*, *Pós-graduação*, *Professor* ou *Servidor*;
+  - **E-mail:** Validação estrutural de formato RFC;
+  - **Senha e Confirmação:** Requisito de tamanho mínimo e paridade.
+- Gravação segura no banco com hash criptográfico PBKDF2 e salt exclusivo.
+
+### 📊 3. Dashboard do Usuário com 3 Abas (`/dashboard`)
+
+O painel central divide-se em abas dinâmicas:
+
+1. **Aba Reconhecimento (Liveness Security):**
+   - Exibição da webcam em tempo real com indicador de enquadramento circular;
+   - Passos visuais do desafio sorteado com barra de progresso individual;
+   - Mensagens orientativas imediatas (*"Centralize o rosto"*, *"Piscada detectada! Abra os olhos"*, *"Gire para a direita"*);
+   - Temporizador regressivo de 60 segundos;
+   - Ao concluir com sucesso, a foto biométrica é salva e as abas confidenciais são liberadas.
+2. **Aba Extrato:**
+   - Resumo financeiro com saldo atual, entradas e saídas;
+   - Histórico categorizado de movimentações (alimentação, serviços, recargas) com datas, valores e comprovantes visuais.
+3. **Aba Perfil:**
+   - Cartão de identificação completo do usuário;
+   - Exibição de Nome, CPF formatado, SIAP, Categoria de Vínculo e E-mail;
+   - Crachá biométrico com a foto capturada durante o Liveness e selo de segurança *"Biometria Verificada"*.
+
+### 👥 4. Gestão Administrativa de Cadastros (`/cadastros`)
+- Painel para consulta de todos os registros persistidos no SQLite;
+- Campo de busca instantânea com filtro por Nome, CPF, SIAP ou E-mail;
+- Distintivo visual destacando usuários com biometria facial validada versus pendente;
+- Modal para cadastro rápido de novos usuários;
+- Exclusão segura com modal de confirmação e duplo clique para prevenir remoções acidentais.
+
+### 📱 5. Experiência Mobile & Progressive Web App (PWA)
+- **100% Responsivo:** Layout adaptável e otimizado com Tailwind CSS para smartphones, tablets e telas widescreen;
+- **Instalação com 1 Toque:** Banner de instalação personalizado (`InstallPwaPrompt.tsx`) na tela inicial permitindo adicionar o app ao celular;
+- **Execução Standalone:** Experiência de aplicativo nativo sem barras de URL ou menus do navegador;
+- **Cache Local de Redes Neurais:** Pesos de IA cacheados no dispositivo para carregamento instantâneo.
 
 ---
 
@@ -120,67 +157,135 @@ A comparação de vetores faciais foi centralizada no módulo `lib/face-recognit
 
 | Camada | Tecnologia | Finalidade |
 | :--- | :--- | :--- |
-| **Framework Full-Stack** | Next.js 14 (App Router) | Renderização híbrida, páginas dinâmicas e API Routes |
-| **Biblioteca de UI** | React 18 | Interfaces declarativas e hooks de estado em tempo real |
-| **Linguagem** | TypeScript 5 | Tipagem estática e segurança de ponta a ponta |
-| **Visão Computacional & IA** | `@vladmandic/face-api` | Modelos SSD MobileNet, 68 Landmarks, Reconhecimento e Expressões |
-| **Módulo Biométrico** | `lib/face-recognition.ts` | Lógica centralizada de matching euclidiano e limiares |
-| **ORM & Banco de Dados** | Prisma 5 + SQLite local | Persistência local em arquivo (`prisma/dev.db`) com isolamento |
-| **PWA & Service Worker** | `@ducanh2912/next-pwa` + Workbox | Cache offline e suporte a aplicativo instalável |
-| **Estilização** | Tailwind CSS 3 | Design limpo em tema claro (*Light Theme*), moderno e responsivo |
-| **Iconografia** | Lucide React | Ícones SVG consistentes |
+| **Framework Full-Stack** | Next.js 14.2 (App Router) | Páginas dinâmicas com SSR/CSR e rotas de API REST |
+| **Biblioteca de UI** | React 18 | Interfaces reativas, gerenciamento de estado e hooks |
+| **Linguagem** | TypeScript 5 | Tipagem estática rigorosa e segurança contra erros em runtime |
+| **Visão Computacional & IA** | `@vladmandic/face-api` | Redes neurais MobileNet, 68 Landmarks e Expressões Faciais |
+| **Motor de Liveness** | `lib/liveness/liveness-engine.ts` | Desafios anti-replay, EAR, Head Yaw e validação PAD temporal |
+| **Segurança & Criptografia** | `lib/auth.ts` (Web Crypto / PBKDF2) | Hashing de senhas com Salt e tokens de sessão HMAC-SHA256 |
+| **ORM & Banco de Dados** | Prisma 5 + SQLite (`prisma/dev.db`) | Persistência local estruturada de usuários e dados biométricos |
+| **PWA & Cache de Modelos** | `@ducanh2912/next-pwa` + Workbox | Funcionamento offline e cache local dos pesos neurais |
+| **Estilização** | Tailwind CSS 3 | Design moderno, limpo (*Light Theme*) e totalmente responsivo |
+| **Iconografia** | Lucide React | Ícones vetoriais modernos |
 
 ---
 
-## 📂 Estrutura de Diretórios
+## 🗄️ Modelo de Dados (`prisma/schema.prisma`)
 
-```text
-├── app/
-│   ├── api/
-│   │   ├── persons/            # CRUD de pessoas (validação estrita do vetor 128D)
-│   │   │   └── [id]/           # Edição e exclusão individual de registros
-│   │   ├── recognize/          # Endpoint REST de reconhecimento facial
-│   │   └── stats/              # Estatísticas de cadastros
-│   ├── cadastro/               # Cadastro por upload de foto com validação facial
-│   ├── cadastros/              # Gerenciamento de registros cadastrados
-│   ├── reconhecer/             # Câmera de acesso com Liveness e decisão de autorização
-│   ├── ~offline/               # Página de contingência offline
-│   ├── layout.tsx              # Layout base com Navbar e PWA
-│   └── page.tsx                # Dashboard principal
-├── components/
-│   ├── RecognitionCameraView.tsx # Motor de câmera com Liveness (EAR/Blink) e canvas
-│   ├── CameraView.tsx          # Componente de câmera para cadastro opcional
-│   ├── InstallPwaPrompt.tsx    # Banner de instalação do aplicativo PWA
-│   ├── Navbar.tsx              # Barra de navegação principal
-│   └── Modal.tsx               # Modal de confirmação e edição
-├── lib/
-│   ├── face-api.ts             # Carregamento dos modelos neurais e detecção em imagens
-│   ├── face-recognition.ts     # Centralização do limiar (0.55) e cálculo de similaridade
-│   ├── validation.ts           # Validações estruturais de dados e vetores
-│   └── prisma.ts               # Cliente singleton do Prisma
-├── prisma/
-│   ├── schema.prisma           # Esquema do banco de dados SQLite
-│   └── dev.db                  # Banco de dados SQLite físico local
-├── public/
-│   ├── models/                 # Pesos das redes neurais pré-treinadas
-│   ├── manifest.json           # Manifesto PWA da aplicação
-│   └── icons/                  # Ícones PWA e favicons
-├── scripts/
-│   ├── test-liveness-auth.mjs  # Testes das regras de Liveness e tabela verdade de acesso
-│   ├── test-recognition.mjs    # Testes de integração de rotas e matching biométrico
-│   └── test-system.mjs         # Testes de ponta a ponta do banco e CRUD
-├── next.config.mjs             # Configurações do Next.js, PWA e filtros do Webpack
-└── package.json                # Dependências e scripts do projeto
+```prisma
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  cpf          String   @unique
+  siap         String   @unique
+  userType     String   // Graduação, Pós-graduação, Professor, Servidor
+  email        String   @unique
+  passwordHash String
+  faceImage    String?  // Foto biométrica capturada após validação de vivacidade
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Person {
+  id             String   @id @default(cuid())
+  name           String
+  faceDescriptor String   // Vetor numérico serializado (128 floats)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
 ```
 
 ---
 
-## 💻 Como Executar o Projeto
+## 🔌 Endpoints da API REST
+
+### Autenticação & Sessão
+- `POST /api/auth/register` — Cria uma nova conta de usuário com validação de CPF e dados.
+- `POST /api/auth/login` — Autentica o usuário por CPF e Senha, emitindo cookie de sessão seguro.
+- `GET /api/auth/session` — Verifica a existência de sessão ativa e retorna os dados do usuário.
+- `POST /api/auth/logout` — Destrói o cookie de sessão e encerra a conexão.
+
+### Dados do Usuário & Biometria
+- `GET /api/user/profile` — Retorna os dados completos do usuário autenticado.
+- `GET /api/user/statement` — Retorna os lançamentos e o extrato financeiro/acessos.
+- `POST /api/user/face` — Salva a imagem facial validada no perfil do usuário no SQLite.
+
+### Gerenciamento de Cadastros
+- `GET /api/cadastros` — Lista todos os usuários cadastrados (com suporte a busca).
+- `POST /api/cadastros` — Criação direta de usuário.
+- `GET /api/cadastros/[id]` — Consulta individual de um registro.
+- `PUT /api/cadastros/[id]` — Atualização cadastral.
+- `DELETE /api/cadastros/[id]` — Exclusão definitiva de um usuário.
+
+---
+
+## 📂 Estrutura de Diretórios Atualizada
+
+```text
+├── app/
+│   ├── api/
+│   │   ├── auth/
+│   │   │   ├── login/route.ts          # Autenticação por CPF e Senha
+│   │   │   ├── logout/route.ts         # Encerramento de sessão
+│   │   │   ├── register/route.ts       # Registro com validações estritas
+│   │   │   └── session/route.ts        # Consulta de sessão autenticada
+│   │   ├── cadastros/
+│   │   │   ├── route.ts                # Listagem e criação de cadastros
+│   │   │   └── [id]/route.ts           # Consulta, edição e exclusão por ID
+│   │   └── user/
+│   │       ├── face/route.ts           # Vinculação da foto após Liveness
+│   │       ├── profile/route.ts        # Dados de perfil do usuário
+│   │       └── statement/route.ts      # Dados de extrato e movimentações
+│   ├── cadastro/                       # Página de novo cadastro de usuário
+│   ├── cadastros/                      # Painel administrativo de gerenciamento
+│   ├── dashboard/                      # Dashboard com Reconhecimento, Extrato e Perfil
+│   ├── ~offline/                       # Página de contingência offline PWA
+│   ├── layout.tsx                      # Layout base da aplicação
+│   ├── not-found.tsx                   # Página 404 personalizada
+│   └── page.tsx                        # Home com formulário de login e links
+├── components/
+│   ├── LivenessSecurityVerification.tsx # Câmera interativa com desafios e validação PAD
+│   ├── registration/
+│   │   └── StepRegisterFlow.tsx        # Formulário em etapas de cadastro
+│   ├── Navbar.tsx                      # Barra de navegação e atalhos
+│   ├── Modal.tsx                       # Modais de confirmação e ações
+│   └── InstallPwaPrompt.tsx            # Prompt de instalação do PWA
+├── lib/
+│   ├── auth.ts                         # Hash PBKDF2/SHA256 e tokens de sessão
+│   ├── face-api.ts                     # Loader dos pesos neurais e detecção em imagens
+│   ├── face-recognition.ts             # Comparação vetorial euclidiana
+│   ├── prisma.ts                       # Singleton do Prisma Client
+│   ├── validation.ts                   # Validadores de CPF, e-mail e máscaras
+│   ├── liveness/
+│   │   └── liveness-engine.ts          # Motor de vivacidade, EAR, Yaw e regras PAD
+│   └── services/
+│       ├── face-service.ts             # Serviço de ciclo de vida dos modelos neurais
+│       └── user-service.ts             # Regras de negócio de perfil e extrato
+├── prisma/
+│   ├── schema.prisma                   # Esquema Prisma (User e Person)
+│   └── dev.db                          # Banco de dados SQLite local
+├── public/
+│   ├── models/                         # Pesos neurais pré-treinados
+│   ├── manifest.json                   # Manifesto PWA
+│   ├── cover.png                       # Capa e interface Desktop do projeto
+│   └── cover-mobile.png                # Capa e interface Mobile (PWA) do projeto
+├── scripts/
+│   ├── test-liveness-auth.mjs          # Teste das métricas de EAR e regras de Liveness
+│   ├── test-mvp-flow.mjs               # Teste do fluxo completo de validação e persistência
+│   └── test-system.mjs                 # Testes de integração do Prisma e CRUD
+├── next.config.mjs                     # Configurações do Next.js e PWA
+└── package.json                        # Dependências e scripts
+```
+
+---
+
+## 💻 Como Executar o Projeto Localmente
 
 ### Pré-requisitos
 - **Node.js** (versão 18.18+ ou 20+)
 - **NPM** instalado
-- Câmera / Webcam conectada (para o fluxo de acesso)
+- Câmera / Webcam conectada e autorizada no navegador
 
 ### 1. Clonar o repositório e entrar na pasta
 ```bash
@@ -203,41 +308,36 @@ npx prisma db push
 npm run dev
 ```
 
-Abra em seu navegador:
+Acesse em seu navegador:
 👉 **[http://localhost:3000](http://localhost:3000)**
 
 ---
 
-## 🧪 Testes Automatizados
+## 🧪 Suíte de Testes Automatizados
 
-O projeto inclui três suítes de testes automatizados:
+Para executar os testes automatizados das rotas e regras de negócio:
 
-### 1. Teste de Liveness e Regras de Autorização
-Valida a lógica matemática de matching, o limiar de $0.55$ e todas as combinações da tabela verdade de acesso:
+### 1. Validação Matemática de Liveness e Anti-Spoofing
+Valida o cálculo do EAR, thresholds de decisão e regras da tabela verdade:
 ```bash
-node --experimental-strip-types scripts/test-liveness-auth.mjs
+node scripts/test-liveness-auth.mjs
 ```
 
-### 2. Teste de Reconhecimento e Integração de Rotas
+### 2. Validação do Fluxo de Usuários, Senhas e Sessões
 ```bash
-node scripts/test-recognition.mjs
-```
-
-### 3. Teste Completo de Persistência e CRUD
-```bash
-node scripts/test-system.mjs
+node scripts/test-mvp-flow.mjs
 ```
 
 ---
 
 ## 🔒 Privacidade e Conformidade com a LGPD
 
-- **Sem Nuvem para Biometria:** Nenhum frame de vídeo ou foto do usuário é transmitido para serviços em nuvem.
-- **Armazenamento Minimalista:** As fotos de acesso não são guardadas; apenas a referência matemática vetorial (128 floats) é persistida no SQLite.
-- **Execução Local:** Toda a inferência de inteligência artificial roda no hardware local do usuário.
+- **Sem Nuvem para Biometria Facial:** Os frames de vídeo e coordenadas faciais são processados **100% no navegador do usuário**, eliminando riscos de vazamento em trânsito.
+- **Armazenamento Mínimo:** Apenas uma imagem de referência confirmada pelo teste de vivacidade e os dados cadastrais necessários são mantidos no banco de dados local.
+- **Proteção Criptográfica:** Credenciais de acesso são armazenadas usando derivação de chave segura com salt individual (PBKDF2).
 
 ---
 
 <p align="center">
-  Desenvolvido com foco em alta segurança, validação de vivacidade (*anti-spoofing*) e privacidade de ponta a ponta.
+  Desenvolvido com foco em alta segurança biométrica, validação ativa de vivacidade (*anti-spoofing*) e privacidade de ponta a ponta.
 </p>
