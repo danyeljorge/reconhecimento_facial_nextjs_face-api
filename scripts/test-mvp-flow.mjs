@@ -99,7 +99,7 @@ async function runTests() {
     data: {
       name: "Daniel Jorge MVP",
       cpf: testCpf,
-      ciap: testCiap,
+      siap: testCiap,
       userType: "Servidor",
       email: testEmail,
       passwordHash: hashPassword("SenhaForte123"),
@@ -125,7 +125,7 @@ async function runTests() {
       id: true,
       name: true,
       cpf: true,
-      ciap: true,
+      siap: true,
       userType: true,
       email: true,
       faceImage: true,

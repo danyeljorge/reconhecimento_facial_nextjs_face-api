@@ -28,7 +28,8 @@ export function validatePersonData(
     return { valid: false, error: "O nome excede o limite máximo de 150 caracteres." };
   }
 
-  // 2. Validação do Face Descriptor (Opcional - MVP não exige descriptor no cadastro)
+  // 2. Face Descriptor não é mais exigido nem utilizado no cadastro do sistema
+  // Mantido apenas com suporte a parsing flexível caso enviado por compatibilidade
   let descriptorArray: number[] | undefined = undefined;
 
   if (faceDescriptor !== undefined && faceDescriptor !== null) {
@@ -39,30 +40,9 @@ export function validatePersonData(
         const parsed = JSON.parse(faceDescriptor);
         if (Array.isArray(parsed)) {
           descriptorArray = parsed;
-        } else {
-          return { valid: false, error: "O Face Descriptor possui formato inválido." };
         }
       } catch {
-        return { valid: false, error: "O Face Descriptor não é um JSON válido." };
-      }
-    } else {
-      return { valid: false, error: "Formato do Face Descriptor inválido." };
-    }
-
-    if (descriptorArray.length !== 128) {
-      return {
-        valid: false,
-        error: `O Face Descriptor deve conter exatamente 128 valores numéricos (recebido: ${descriptorArray.length}).`,
-      };
-    }
-
-    for (let i = 0; i < descriptorArray.length; i++) {
-      const val = descriptorArray[i];
-      if (typeof val !== "number" || isNaN(val) || !isFinite(val)) {
-        return {
-          valid: false,
-          error: `O Face Descriptor contém valor inválido no índice ${i}.`,
-        };
+        // Ignora se não for JSON válido, já que Face Descriptor não é mais exigido
       }
     }
   }

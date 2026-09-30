@@ -91,13 +91,6 @@ export function formatEmotion(expressionName: string, probability: number): Domi
   }
 }
 
-export {
-  FACE_MATCH_THRESHOLD,
-  euclideanDistance,
-  compareFace,
-  type MatchResult,
-} from "./face-recognition";
-
 export interface ImageFaceDetectionResult {
   success: boolean;
   faceCount: number;

@@ -1,9 +1,7 @@
-import { NextResponse } from "next/server";
-import { clearSessionCookie } from "@/lib/auth";
+import { authController } from "@/lib/controllers/auth-controller";
 
 export const dynamic = "force-dynamic";
 
 export async function POST() {
-  clearSessionCookie();
-  return NextResponse.json({ success: true, message: "Sessão encerrada com sucesso." });
+  return authController.handleLogout();
 }

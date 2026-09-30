@@ -1,16 +1,13 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { personRepository } from "@/lib/repositories/person-repository";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
     const [totalPersons, lastPerson] = await Promise.all([
-      prisma.person.count(),
-      prisma.person.findFirst({
-        orderBy: { createdAt: "desc" },
-        select: { createdAt: true },
-      }),
+      personRepository.count(),
+      personRepository.findFirstLatest(),
     ]);
 
     return NextResponse.json({

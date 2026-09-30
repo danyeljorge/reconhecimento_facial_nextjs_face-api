@@ -1,39 +1,42 @@
+/**
+ * @deprecated ROTA LEGADA DE MATCHING FACIAL
+ * 
+ * ATENÇÃO ARQUITETURAL:
+ * O fluxo oficial do sistema NÃO utiliza Face Descriptor nem matching para autenticação.
+ * A autenticação do usuário é realizada exclusivamente via CPF + Senha.
+ * A validação facial subsequente é estritamente de Prova de Vida (Liveness/Anti-Spoofing).
+ */
+
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-
-export const dynamic = "force-dynamic";
-
+import { personRepository } from "@/lib/repositories/person-repository";
 import {
   FACE_MATCH_THRESHOLD,
   compareFace,
 } from "@/lib/face-recognition";
 
-// GET /api/recognize - Retorna descriptors cadastrados para matching em tempo real no cliente
+export const dynamic = "force-dynamic";
+
+// GET /api/recognize - Retorna descriptors para compatibilidade
 export async function GET() {
   try {
-    const persons = await prisma.person.findMany({
-      select: {
-        id: true,
-        name: true,
-        faceDescriptor: true,
-        createdAt: true,
-      },
-    });
+    const persons = await personRepository.getAllWithDescriptors();
 
-    const parsedPersons = persons.map((p) => {
-      let descriptor: number[] = [];
-      try {
-        descriptor = JSON.parse(p.faceDescriptor);
-      } catch {
-        descriptor = [];
-      }
-      return {
-        id: p.id,
-        name: p.name,
-        descriptor,
-        createdAt: p.createdAt,
-      };
-    }).filter(p => p.descriptor.length === 128);
+    const parsedPersons = persons
+      .map((p) => {
+        let descriptor: number[] = [];
+        try {
+          descriptor = JSON.parse(p.faceDescriptor);
+        } catch {
+          descriptor = [];
+        }
+        return {
+          id: p.id,
+          name: p.name,
+          descriptor,
+          createdAt: p.createdAt,
+        };
+      })
+      .filter((p) => Array.isArray(p.descriptor) && p.descriptor.length === 128);
 
     return NextResponse.json({
       success: true,
@@ -52,7 +55,7 @@ export async function GET() {
 // POST /api/recognize - Reconhecer um Face Descriptor capturado
 export async function POST(request: NextRequest) {
   try {
-    let body;
+    let body: any;
     try {
       body = await request.json();
     } catch {
@@ -71,15 +74,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Busca todas as pessoas cadastradas no SQLite
-    const persons = await prisma.person.findMany({
-      select: {
-        id: true,
-        name: true,
-        faceDescriptor: true,
-        createdAt: true,
-      },
-    });
+    const persons = await personRepository.getAllWithDescriptors();
 
     if (persons.length === 0) {
       return NextResponse.json({

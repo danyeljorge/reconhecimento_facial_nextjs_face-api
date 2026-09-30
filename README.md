@@ -24,51 +24,93 @@
 
 ## 📌 Sobre o Projeto
 
-O **Sistema de Reconhecimento Facial & Controle de Acesso com Liveness** é uma solução web moderna e progressiva (PWA) para identificação, autenticação em duas etapas e auditoria de presença física.
+O **Sistema de Reconhecimento Facial & Controle de Acesso com Liveness** é uma aplicação web progressiva (PWA) de alta segurança para autenticação em dois fatores, validação de presença física em tempo real e gestão de usuários.
 
-O sistema combina **autenticação segura por credenciais (CPF + Senha criptografada)** com uma barreira biométrica ativa de **Vivacidade (*Liveness / Proof of Life*)** executada diretamente no navegador via **Client-Side AI**.
+O projeto adota uma **arquitetura em camadas desacopladas (Clean Layered Architecture)** com separação rigorosa de responsabilidades entre interface de usuário, aplicação/controladores, regras de negócio, acesso a dados e o motor biométrico de visão computacional.
 
-### Principais Pilares da Solução
+### 🔑 Princípios Centrais de Negócio & Segurança
 
-1. **Autenticação em Dois Fatores (2FA: Credenciais + Biometria Viva):**
-   - **Fator 1 (Credenciais):** O usuário se autentica com CPF e Senha protegidos por hash PBKDF2/SHA256, gerando uma sessão criptografada em cookie HTTP-Only.
-   - **Fator 2 (Liveness & Anti-Spoofing):** No Dashboard, o usuário deve passar obrigatoriamente por uma verificação de vivacidade interativa via câmera para desbloquear as áreas restritas (Extrato, Perfil e Serviços).
-2. **Motor de Liveness e Detecção de Ataques de Apresentação (PAD):**
-   - Gera desafios biométricos aleatórios (*Anti-Replay*) como piscar de olhos, rotação da cabeça (Yaw) e sorrisos.
-   - Analisa a variância temporal de múltiplos frames para rejeitar fotos estáticas impressas, telas digitais ou vídeos pré-gravados.
-3. **Dashboard Completo do Usuário:**
-   - **Reconhecimento / Câmera:** Monitoramento em tempo real da validação de vivacidade com feedback dinâmico.
-   - **Extrato Financeiro / Acessos:** Visualização detalhada de lançamentos, saldo e histórico de utilização.
-   - **Perfil Cadastral:** Informações completas (Nome, CPF formatado, SIAP, Vínculo Acadêmico/Profissional e foto validada).
-4. **Gerenciamento Administrativo de Cadastros:**
-   - Listagem completa, busca em tempo real por múltiplos campos, indicador de biometria validada, criação e exclusão com segurança.
-5. **Privacidade e Conformidade LGPD (100% Client-Side AI):**
-   - O processamento das redes neurais ocorre inteiramente no hardware local do usuário via WebAssembly/WebGL com `@vladmandic/face-api`, sem envio de vídeo ou fluxo contínuo para servidores externos.
+1. **Identificação e Autenticação por Credenciais:**
+   - O usuário é identificado estritamente por **CPF + Senha criptografada** com PBKDF2/SHA256 e Salt exclusivo, gerando sessão segura via cookie HTTP-Only.
+2. **Biometria Focada em Vivacidade (Liveness / Anti-Spoofing):**
+   - A câmera **NÃO** é utilizada para adivinhar a identidade do usuário via descritores faciais 1:N.
+   - O módulo biométrico atua exclusivamente como **barreira de vivacidade e prova de vida ativa (*Proof of Life / PAD*)**, garantindo que o usuário autenticado está fisicamente presente diante da lente.
+3. **Privacidade e Conformidade LGPD (Client-Side AI):**
+   - Todo o processamento das redes neurais de visão computacional ocorre localmente no navegador via WebAssembly/WebGL com `@vladmandic/face-api`, sem streaming de vídeo para servidores externos.
 
 ---
 
-## 🔄 Fluxo de Acesso e Arquitetura
+## 🏛️ Arquitetura do Sistema
+
+A aplicação foi estruturada conceitualmente em camadas bem delimitadas, garantindo que componentes de interface não acessem o banco de dados e que serviços de IA fiquem isolados atrás de abstrações substituíveis.
+
+### 1. Fluxo de Dados e Aplicação
+```text
+FRONTEND (Next.js Pages & React Components)
+   ↓
+API ROUTE HANDLERS (app/api/**)
+   ↓
+CONTROLLERS (lib/controllers/**)
+   ↓
+SERVICES (lib/services/**)
+   ↓
+REPOSITORIES (lib/repositories/**)
+   ↓
+PRISMA ORM & DATABASE (lib/prisma.ts -> SQLite)
+```
+
+### 2. Fluxo de Visão Computacional e Liveness
+```text
+CAMERA SERVICE (lib/camera/camera-service.ts)
+   ↓
+FACE ENGINE (lib/face-engine/face-engine.ts) [Isola face-api.js]
+   ↓
+LIVENESS SERVICE (lib/services/liveness-service.ts) [Avaliação PAD e Desafios]
+   ↓
+LIVENESS CONTROLLER (lib/controllers/liveness-controller.ts)
+   ↓
+FRONTEND (components/LivenessSecurityVerification.tsx)
+```
+
+---
+
+## 🧩 Responsabilidade das Camadas
+
+| Camada | Localização | Responsabilidade |
+| :--- | :--- | :--- |
+| **Frontend (UI)** | `app/`, `components/` | Renderização visual, interação com o usuário, formulários, máscaras, feedback visual e exibição dos desafios de liveness. Não acessa o Prisma ou banco de dados. |
+| **API Handlers** | `app/api/**` | Pontos de entrada HTTP do Next.js App Router. Recebem as requisições e delegam diretamente aos controllers. |
+| **Controllers** | `lib/controllers/` | Coordenação do fluxo da aplicação. Recebem os dados, validam o fluxo, acionam os serviços e formatam respostas HTTP padronizadas. |
+| **Services** | `lib/services/` | Regras de negócio da aplicação (hashing, sessões, montagem de perfis DTO, extratos e lógica de vivacidade). |
+| **Repositories** | `lib/repositories/` | Isolamento total do acesso a dados via Prisma. Concentram todas as queries de persistência de `User` e `Person`. |
+| **Camera Service** | `lib/camera/` | Gerenciamento seguro do ciclo de vida da webcam (`MediaStream`), tracks e captura de snapshots. |
+| **Face Engine** | `lib/face-engine/` | Abstração que isola a biblioteca externa (`face-api.js`), fornecendo normalização de marcos faciais de forma agnóstica. |
+| **Types / DTOs** | `lib/types/` | Definições centralizadas de contratos de interfaces, DTOs e tipagens compartilhadas. |
+
+---
+
+## 🔄 Fluxograma do Fluxo do Usuário
 
 ```mermaid
 flowchart TD
-    A[Acesso à Plataforma] --> B{Possui Conta?}
-    B -- Não --> C[Cadastro de Usuário /cadastro\nNome, CPF, SIAP, Vínculo, Senha]
-    C --> D[Armazenamento Seguro no SQLite]
+    A[Acesso à Aplicação] --> B{Possui Cadastro?}
+    B -- Não --> C[Cadastro em /cadastro\nNome, CPF, SIAP, Vínculo, Senha]
+    C --> D[Armazenamento Seguro no Repositório SQLite]
     D --> E[Login com CPF e Senha]
     B -- Sim --> E
-    E --> F[Validação de Credenciais Hash PBKDF2]
-    F --> G[Criação de Sessão HTTP-Only Segura]
-    G --> H[Redirecionamento ao Dashboard /dashboard]
-    H --> I[Barreira Biométrica: Desafio de Liveness]
+    E --> F[AuthController: Validação PBKDF2]
+    F --> G[Emissão de Sessão HTTP-Only Segura]
+    G --> H[Redirecionamento ao /dashboard]
+    H --> I[Barreira Biométrica: Desafio Liveness]
     I --> J{Liveness Aprovado?}
-    J -- Não (Foto/Tela/Tempo Esgotado) --> K[Acesso Restrito Bloqueado\nOpção de Repetir Verificação]
-    J -- Sim (Pessoa Real com Movimento) --> L[Salva Foto Biométrica no Perfil]
+    J -- Não (Foto/Tela/Tempo) --> K[Acesso Bloqueado\nPossibilidade de Repetir]
+    J -- Sim (Pessoa Real com Movimento) --> L[Salva Imagem Validada no Perfil]
     L --> M[Desbloqueio Completo: Extrato & Perfil]
 ```
 
 ---
 
-## 🧠 Motor de Liveness & Anti-Spoofing (`lib/liveness/liveness-engine.ts`)
+## 🧠 Motor de Liveness & Anti-Spoofing (`lib/services/liveness-service.ts`)
 
 A validação de vivacidade foi desenvolvida para barrar ataques de apresentação (fotos estáticas impressas, telas de smartphone, tablets ou monitores) sem depender de APIs externas pagas.
 
@@ -161,9 +203,11 @@ O painel central divide-se em abas dinâmicas:
 | **Biblioteca de UI** | React 18 | Interfaces reativas, gerenciamento de estado e hooks |
 | **Linguagem** | TypeScript 5 | Tipagem estática rigorosa e segurança contra erros em runtime |
 | **Visão Computacional & IA** | `@vladmandic/face-api` | Redes neurais MobileNet, 68 Landmarks e Expressões Faciais |
-| **Motor de Liveness** | `lib/liveness/liveness-engine.ts` | Desafios anti-replay, EAR, Head Yaw e validação PAD temporal |
-| **Segurança & Criptografia** | `lib/auth.ts` (Web Crypto / PBKDF2) | Hashing de senhas com Salt e tokens de sessão HMAC-SHA256 |
-| **ORM & Banco de Dados** | Prisma 5 + SQLite (`prisma/dev.db`) | Persistência local estruturada de usuários e dados biométricos |
+| **Isolamento de Visão** | `lib/face-engine/` & `lib/camera/` | Encapsulamento agnóstico do motor de detecção e WebRTC |
+| **Motor de Liveness** | `lib/services/liveness-service.ts` | Desafios anti-replay, EAR, Head Yaw e validação PAD temporal |
+| **Segurança & Criptografia** | `lib/services/auth-service.ts` (Web Crypto) | Hashing de senhas com PBKDF2/Salt e tokens HMAC-SHA256 |
+| **Camada de Repositórios** | `lib/repositories/` | Abstração de persistência com `UserRepository` e `PersonRepository` |
+| **ORM & Banco de Dados** | Prisma 5 + SQLite (`prisma/dev.db`) | Persistência local estruturada de usuários e biometria |
 | **PWA & Cache de Modelos** | `@ducanh2912/next-pwa` + Workbox | Funcionamento offline e cache local dos pesos neurais |
 | **Estilização** | Tailwind CSS 3 | Design moderno, limpo (*Light Theme*) e totalmente responsivo |
 | **Iconografia** | Lucide React | Ícones vetoriais modernos |
@@ -190,7 +234,7 @@ model User {
 model Person {
   id             String   @id @default(cuid())
   name           String
-  faceDescriptor String   // Vetor numérico serializado (128 floats)
+  faceDescriptor String   // Vetor numérico serializado (legado)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }
@@ -198,20 +242,20 @@ model Person {
 
 ---
 
-## 🔌 Endpoints da API REST
+## 🔌 Endpoints da API REST (Delegados aos Controllers)
 
-### Autenticação & Sessão
+### Autenticação & Sessão (`AuthController`)
 - `POST /api/auth/register` — Cria uma nova conta de usuário com validação de CPF e dados.
 - `POST /api/auth/login` — Autentica o usuário por CPF e Senha, emitindo cookie de sessão seguro.
 - `GET /api/auth/session` — Verifica a existência de sessão ativa e retorna os dados do usuário.
 - `POST /api/auth/logout` — Destrói o cookie de sessão e encerra a conexão.
 
-### Dados do Usuário & Biometria
+### Dados do Usuário & Biometria (`UserController`)
 - `GET /api/user/profile` — Retorna os dados completos do usuário autenticado.
 - `GET /api/user/statement` — Retorna os lançamentos e o extrato financeiro/acessos.
 - `POST /api/user/face` — Salva a imagem facial validada no perfil do usuário no SQLite.
 
-### Gerenciamento de Cadastros
+### Gerenciamento de Cadastros (`UserController`)
 - `GET /api/cadastros` — Lista todos os usuários cadastrados (com suporte a busca).
 - `POST /api/cadastros` — Criação direta de usuário.
 - `GET /api/cadastros/[id]` — Consulta individual de um registro.
@@ -220,30 +264,22 @@ model Person {
 
 ---
 
-## 📂 Estrutura de Diretórios Atualizada
+## 📂 Estrutura de Diretórios Refatorada
 
 ```text
 ├── app/
-│   ├── api/
-│   │   ├── auth/
-│   │   │   ├── login/route.ts          # Autenticação por CPF e Senha
-│   │   │   ├── logout/route.ts         # Encerramento de sessão
-│   │   │   ├── register/route.ts       # Registro com validações estritas
-│   │   │   └── session/route.ts        # Consulta de sessão autenticada
-│   │   ├── cadastros/
-│   │   │   ├── route.ts                # Listagem e criação de cadastros
-│   │   │   └── [id]/route.ts           # Consulta, edição e exclusão por ID
-│   │   └── user/
-│   │       ├── face/route.ts           # Vinculação da foto após Liveness
-│   │       ├── profile/route.ts        # Dados de perfil do usuário
-│   │       └── statement/route.ts      # Dados de extrato e movimentações
+│   ├── api/                            # Rotas HTTP finas (delegam para controllers)
+│   │   ├── auth/                       # login, logout, register, session
+│   │   ├── cadastros/                  # listagem, criação, atualização, exclusão
+│   │   ├── user/                       # face, profile, statement
+│   │   └── persons/                    # registros legados isolados
 │   ├── cadastro/                       # Página de novo cadastro de usuário
 │   ├── cadastros/                      # Painel administrativo de gerenciamento
 │   ├── dashboard/                      # Dashboard com Reconhecimento, Extrato e Perfil
-│   ├── ~offline/                       # Página de contingência offline PWA
+│   ├── ~offline/                       # Contingência offline PWA
 │   ├── layout.tsx                      # Layout base da aplicação
 │   ├── not-found.tsx                   # Página 404 personalizada
-│   └── page.tsx                        # Home com formulário de login e links
+│   └── page.tsx                        # Home com login por CPF + Senha
 ├── components/
 │   ├── LivenessSecurityVerification.tsx # Câmera interativa com desafios e validação PAD
 │   ├── registration/
@@ -252,28 +288,46 @@ model Person {
 │   ├── Modal.tsx                       # Modais de confirmação e ações
 │   └── InstallPwaPrompt.tsx            # Prompt de instalação do PWA
 ├── lib/
-│   ├── auth.ts                         # Hash PBKDF2/SHA256 e tokens de sessão
-│   ├── face-api.ts                     # Loader dos pesos neurais e detecção em imagens
-│   ├── face-recognition.ts             # Comparação vetorial euclidiana
+│   ├── types/                          # Contratos e DTOs centralizados
+│   │   ├── user.ts                     # UserDTO, UserProfileDTO, CreateUserDTO, IUserRepository
+│   │   ├── auth.ts                     # LoginCredentials, AuthResult, IAuthService
+│   │   ├── liveness.ts                 # FaceDetectionFrame, ILivenessService, IFaceEngine
+│   │   └── index.ts                    # Barrel export
+│   ├── repositories/                   # Camada de acesso a dados (Prisma isolado)
+│   │   ├── user-repository.ts          # Queries de User
+│   │   ├── person-repository.ts        # Queries de Person
+│   │   └── index.ts                    # Singletons
+│   ├── services/                       # Camada de regras de negócio
+│   │   ├── auth-service.ts             # Hashing PBKDF2, sessões HMAC, login
+│   │   ├── user-service.ts             # Perfil, extratos, regras de usuário
+│   │   ├── liveness-service.ts         # Desafios de vivacidade, EAR, Yaw, PAD
+│   │   └── face-service.ts             # Facade de ciclo de vida dos modelos
+│   ├── controllers/                    # Camada de coordenação de fluxo
+│   │   ├── auth-controller.ts          # Login, registro, sessões, logout
+│   │   ├── user-controller.ts          # Perfis, extratos, CRUD cadastros
+│   │   ├── liveness-controller.ts      # Sessões e verificação de liveness
+│   │   └── index.ts                    # Singletons
+│   ├── camera/
+│   │   └── camera-service.ts           # Inicialização e snapshots da webcam
+│   ├── face-engine/
+│   │   └── face-engine.ts              # Encapsulamento de visão computacional
 │   ├── prisma.ts                       # Singleton do Prisma Client
-│   ├── validation.ts                   # Validadores de CPF, e-mail e máscaras
-│   ├── liveness/
-│   │   └── liveness-engine.ts          # Motor de vivacidade, EAR, Yaw e regras PAD
-│   └── services/
-│       ├── face-service.ts             # Serviço de ciclo de vida dos modelos neurais
-│       └── user-service.ts             # Regras de negócio de perfil e extrato
+│   └── validation.ts                   # Validadores de CPF, senhas e máscaras
 ├── prisma/
 │   ├── schema.prisma                   # Esquema Prisma (User e Person)
 │   └── dev.db                          # Banco de dados SQLite local
 ├── public/
 │   ├── models/                         # Pesos neurais pré-treinados
 │   ├── manifest.json                   # Manifesto PWA
-│   ├── cover.png                       # Capa e interface Desktop do projeto
-│   └── cover-mobile.png                # Capa e interface Mobile (PWA) do projeto
+│   ├── cover.png                       # Capa Desktop
+│   └── cover-mobile.png                # Capa Mobile (PWA)
 ├── scripts/
-│   ├── test-liveness-auth.mjs          # Teste das métricas de EAR e regras de Liveness
-│   ├── test-mvp-flow.mjs               # Teste do fluxo completo de validação e persistência
-│   └── test-system.mjs                 # Testes de integração do Prisma e CRUD
+│   ├── test-architecture-flow.mjs      # Teste integrado das camadas arquiteturais
+│   ├── test-liveness-auth.mjs          # Teste de EAR e regras de Anti-Spoofing
+│   ├── test-mvp-flow.mjs               # Teste de ponta a ponta de autenticação e banco
+│   └── test-system.mjs                 # Testes de integração do Prisma
+├── ARCHITECTURE.md                     # Documento formal com diagramas e guias de design
+├── relatorio.md                        # Relatório completo da refatoração arquitetural
 ├── next.config.mjs                     # Configurações do Next.js e PWA
 └── package.json                        # Dependências e scripts
 ```
@@ -308,24 +362,36 @@ npx prisma db push
 npm run dev
 ```
 
-Acesse em seu navegador:
+Acesse em seu navegador:  
 👉 **[http://localhost:3000](http://localhost:3000)**
 
 ---
 
 ## 🧪 Suíte de Testes Automatizados
 
-Para executar os testes automatizados das rotas e regras de negócio:
+O projeto conta com scripts dedicados para validação em múltiplos níveis:
 
-### 1. Validação Matemática de Liveness e Anti-Spoofing
+### 1. Teste da Arquitetura em Camadas
+Valida a integridade entre Repositórios, Serviços (`AuthService`, `UserService`, `LivenessService`) e Controllers:
+```bash
+node scripts/test-architecture-flow.mjs
+```
+
+### 2. Teste do Fluxo de Autenticação e Persistência
+Valida CPF algorítmico, hashing PBKDF2, tokens HMAC-SHA256 e persistência no SQLite:
+```bash
+node scripts/test-mvp-flow.mjs
+```
+
+### 3. Teste Matemático de Liveness e Anti-Spoofing
 Valida o cálculo do EAR, thresholds de decisão e regras da tabela verdade:
 ```bash
 node scripts/test-liveness-auth.mjs
 ```
 
-### 2. Validação do Fluxo de Usuários, Senhas e Sessões
+### 4. Verificação de Build de Produção
 ```bash
-node scripts/test-mvp-flow.mjs
+npm run build
 ```
 
 ---
@@ -338,6 +404,13 @@ node scripts/test-mvp-flow.mjs
 
 ---
 
+## 📑 Documentação Adicional
+
+- [relatorio.md](file:///c:/Users/Daniel%20Jorge/Desktop/DANIEL%20JORGE/PROJETOS/reconhecimento_facial_next-js/relatorio.md) — Relatório analítico detalhado da refatoração arquitetural executada.
+- [ARCHITECTURE.md](file:///c:/Users/Daniel%20Jorge/Desktop/DANIEL%20JORGE/PROJETOS/reconhecimento_facial_next-js/ARCHITECTURE.md) — Documentação técnica completa das camadas, interfaces e fluxo de dados.
+
+---
+
 <p align="center">
-  Desenvolvido com foco em alta segurança biométrica, validação ativa de vivacidade (*anti-spoofing*) e privacidade de ponta a ponta.
+  Desenvolvido com foco em alta segurança biométrica, validação ativa de vivacidade (*anti-spoofing*), separação de responsabilidades e privacidade de ponta a ponta.
 </p>

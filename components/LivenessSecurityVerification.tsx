@@ -17,16 +17,16 @@ import {
   UserCheck,
   Sparkles,
 } from "lucide-react";
+import { cameraService } from "@/lib/camera/camera-service";
+import { faceEngine } from "@/lib/face-engine/face-engine";
+import { livenessService } from "@/lib/services/liveness-service";
 import {
-  faceRecognitionService,
-  FaceDetectionOutput,
-} from "@/lib/services/face-service";
-import {
-  LivenessSessionManager,
-  extractFrameMetrics,
   ChallengeStep,
   ChallengeStepType,
-} from "@/lib/liveness/liveness-engine";
+  FaceDetectionResult,
+} from "@/lib/types";
+import { LivenessSessionManager } from "@/lib/liveness/liveness-engine";
+
 
 export type LivenessUIState =
   | "INICIANDO"
@@ -91,7 +91,7 @@ export function LivenessSecurityVerification({
       animationFrameRef.current = null;
     }
     clearTimer();
-    faceRecognitionService.stopCamera(streamRef.current, videoRef.current);
+    cameraService.stopCamera(streamRef.current, videoRef.current);
     streamRef.current = null;
   }, [clearTimer]);
 
@@ -126,7 +126,7 @@ export function LivenessSecurityVerification({
     setStepProgress(0);
 
     // 1. Cria nova sessão com sequência de desafios garantidamente aleatória
-    const session = faceRecognitionService.createLivenessSession(previousSequenceIdRef.current);
+    const session = livenessService.createSession(previousSequenceIdRef.current);
     previousSequenceIdRef.current = session.sequenceId;
     sessionManagerRef.current = session;
     setSteps(session.steps);
@@ -141,13 +141,13 @@ export function LivenessSecurityVerification({
         throw new Error("Elemento de vídeo não encontrado no DOM.");
       }
 
-      // 2. Conecta webcam
-      const stream = await faceRecognitionService.startCamera(videoRef.current);
+      // 2. Conecta webcam via CameraService
+      const stream = await cameraService.startCamera(videoRef.current);
       streamRef.current = stream;
 
-      // 3. Inicializa modelos se necessário
+      // 3. Inicializa modelos via FaceEngine
       setStatusMessage("Preparando câmera...");
-      await faceRecognitionService.initialize();
+      await faceEngine.initialize("/models");
 
       // 4. Pronto para aguardar o rosto
       setUiState("AGUARDANDO_ROSTO");
@@ -171,7 +171,7 @@ export function LivenessSecurityVerification({
 
           if (video.readyState >= 2 && !video.paused && !video.ended) {
             try {
-              const detection: FaceDetectionOutput = await faceRecognitionService.detectFace(video);
+              const detection = await faceEngine.detectFace(video);
               setFaceCount(detection.faceCount);
 
               // Validação de presença do rosto
@@ -219,7 +219,7 @@ export function LivenessSecurityVerification({
                         setStatusMessage("Pessoa real confirmada.");
                         setFeedbackText("Verificação de presença concluída com sucesso!");
 
-                        const photo = faceRecognitionService.captureFace(video, {
+                        const photo = cameraService.captureSnapshot(video, {
                           maxWidth: 640,
                           quality: 0.88,
                         });
@@ -244,12 +244,14 @@ export function LivenessSecurityVerification({
                     setUiState("DESAFIO_EM_ANDAMENTO");
                     setStatusMessage(currentStep.title);
 
-                    // Extrai métricas do frame atual
-                    const frameMetrics = extractFrameMetrics(
-                      detection.landmarks,
-                      detection.expressions,
-                      detection.box
-                    );
+                    // Extrai métricas do frame atual via LivenessService
+                    const frameMetrics = detection.box
+                      ? livenessService.extractMetrics(
+                          detection.landmarks,
+                          detection.expressions,
+                          detection.box
+                        )
+                      : null;
 
                     if (frameMetrics) {
                       const evaluation = currentSession.evaluateFrame(frameMetrics);
@@ -278,7 +280,7 @@ export function LivenessSecurityVerification({
                             setStatusMessage("Pessoa real confirmada.");
                             setFeedbackText("Verificação de presença concluída com sucesso!");
 
-                            const photo = faceRecognitionService.captureFace(video, {
+                            const photo = cameraService.captureSnapshot(video, {
                               maxWidth: 640,
                               quality: 0.88,
                             });

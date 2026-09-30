@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { personRepository } from "@/lib/repositories/person-repository";
 import { validatePersonName } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
@@ -10,23 +10,14 @@ interface RouteParams {
   };
 }
 
-// GET /api/persons/[id] - Obter detalhes de um cadastro
+// GET /api/persons/[id]
 export async function GET(
   _request: NextRequest,
   { params }: RouteParams
 ) {
   try {
     const { id } = params;
-
-    const person = await prisma.person.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        name: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
+    const person = await personRepository.findById(id);
 
     if (!person) {
       return NextResponse.json(
@@ -46,7 +37,6 @@ export async function GET(
 }
 
 // PATCH /api/persons/[id] - Atualizar nome da pessoa
-// Conforme requisito 13: "A edição do nome não deve gerar um novo Face Descriptor. O descriptor pertence à identidade facial cadastrada."
 export async function PATCH(
   request: NextRequest,
   { params }: RouteParams
@@ -54,7 +44,7 @@ export async function PATCH(
   try {
     const { id } = params;
 
-    let body;
+    let body: any;
     try {
       body = await request.json();
     } catch {
@@ -74,8 +64,7 @@ export async function PATCH(
       );
     }
 
-    // Verifica se a pessoa existe
-    const existing = await prisma.person.findUnique({ where: { id } });
+    const existing = await personRepository.findById(id);
     if (!existing) {
       return NextResponse.json(
         { success: false, error: "Cadastro não encontrado." },
@@ -83,19 +72,7 @@ export async function PATCH(
       );
     }
 
-    // Atualiza estritamente apenas o nome
-    const updatedPerson = await prisma.person.update({
-      where: { id },
-      data: {
-        name: validation.sanitizedName,
-      },
-      select: {
-        id: true,
-        name: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
+    const updatedPerson = await personRepository.updateName(id, validation.sanitizedName);
 
     return NextResponse.json({
       success: true,
@@ -119,7 +96,7 @@ export async function DELETE(
   try {
     const { id } = params;
 
-    const existing = await prisma.person.findUnique({ where: { id } });
+    const existing = await personRepository.findById(id);
     if (!existing) {
       return NextResponse.json(
         { success: false, error: "Cadastro não encontrado." },
@@ -127,9 +104,7 @@ export async function DELETE(
       );
     }
 
-    await prisma.person.delete({
-      where: { id },
-    });
+    await personRepository.deleteById(id);
 
     return NextResponse.json({
       success: true,

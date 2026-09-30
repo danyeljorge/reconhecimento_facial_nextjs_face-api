@@ -21,9 +21,12 @@ import {
   getFaceApi,
   DominantEmotion,
   calculateLivenessMetrics,
+} from "@/lib/face-api";
+import {
   FACE_MATCH_THRESHOLD,
   compareFace,
-} from "@/lib/face-api";
+} from "@/lib/face-recognition";
+
 
 export interface RecognizedPersonData {
   id: string;

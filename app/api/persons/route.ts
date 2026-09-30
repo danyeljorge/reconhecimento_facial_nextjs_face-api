@@ -1,33 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { personRepository } from "@/lib/repositories/person-repository";
 import { validatePersonData } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
 
-// GET /api/persons - Listar pessoas cadastradas
+// GET /api/persons - Listar pessoas cadastradas (via PersonRepository)
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const countOnly = searchParams.get("countOnly") === "true";
 
     if (countOnly) {
-      const count = await prisma.person.count();
+      const count = await personRepository.count();
       return NextResponse.json({ count });
     }
 
-    // Retorna pessoas cadastradas ordenadas pela data mais recente
-    // Por segurança e privacidade biométrica, o faceDescriptor numérico não é retornado na listagem comum
-    const persons = await prisma.person.findMany({
-      select: {
-        id: true,
-        name: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+    const persons = await personRepository.listAll();
 
     return NextResponse.json({
       success: true,
@@ -43,10 +31,10 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/persons - Cadastrar nova pessoa com Face Descriptor
+// POST /api/persons - Cadastrar pessoa
 export async function POST(request: NextRequest) {
   try {
-    let body;
+    let body: any;
     try {
       body = await request.json();
     } catch {
@@ -58,29 +46,21 @@ export async function POST(request: NextRequest) {
 
     const { name, faceDescriptor } = body;
 
-    // Validação rigorosa dos dados
     const validation = validatePersonData(name, faceDescriptor);
-    if (!validation.valid || !validation.sanitizedName || !validation.parsedDescriptor) {
+    if (!validation.valid || !validation.sanitizedName) {
       return NextResponse.json(
         { success: false, error: validation.error || "Dados inválidos." },
         { status: 400 }
       );
     }
 
-    // Serialização do vetor para persistência no SQLite
-    const serializedDescriptor = JSON.stringify(validation.parsedDescriptor);
+    const serializedDescriptor = validation.parsedDescriptor
+      ? JSON.stringify(validation.parsedDescriptor)
+      : "[]";
 
-    // Salva no banco de dados local SQLite
-    const newPerson = await prisma.person.create({
-      data: {
-        name: validation.sanitizedName,
-        faceDescriptor: serializedDescriptor,
-      },
-      select: {
-        id: true,
-        name: true,
-        createdAt: true,
-      },
+    const newPerson = await personRepository.create({
+      name: validation.sanitizedName,
+      faceDescriptor: serializedDescriptor,
     });
 
     return NextResponse.json(

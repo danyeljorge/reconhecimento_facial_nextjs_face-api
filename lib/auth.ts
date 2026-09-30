@@ -1,5 +1,14 @@
 import crypto from "crypto";
-import { cookies } from "next/headers";
+
+function getCookieStore() {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const nextHeaders = require("next/headers");
+    return nextHeaders.cookies();
+  } catch {
+    return null;
+  }
+}
 
 
 const SESSION_COOKIE_NAME = "facial_mvp_session";
@@ -90,7 +99,8 @@ export function verifySessionToken(token: string): SessionPayload | null {
  * Configura o cookie de sessão httpOnly
  */
 export function setSessionCookie(token: string) {
-  const cookieStore = cookies();
+  const cookieStore = getCookieStore();
+  if (!cookieStore) return;
   cookieStore.set(SESSION_COOKIE_NAME, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
@@ -104,7 +114,8 @@ export function setSessionCookie(token: string) {
  * Limpa o cookie de sessão
  */
 export function clearSessionCookie() {
-  const cookieStore = cookies();
+  const cookieStore = getCookieStore();
+  if (!cookieStore) return;
   cookieStore.delete(SESSION_COOKIE_NAME);
 }
 
@@ -113,7 +124,8 @@ export function clearSessionCookie() {
  */
 export function getCurrentSession(): SessionPayload | null {
   try {
-    const cookieStore = cookies();
+    const cookieStore = getCookieStore();
+    if (!cookieStore) return null;
     const sessionCookie = cookieStore.get(SESSION_COOKIE_NAME);
     if (!sessionCookie || !sessionCookie.value) return null;
     return verifySessionToken(sessionCookie.value);
