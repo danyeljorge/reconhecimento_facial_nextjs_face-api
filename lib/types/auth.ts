@@ -18,6 +18,9 @@ export interface AuthenticatedUserDTO {
   userType: string;
   ciap?: string;
   siap?: string;
+  hasFaceRegistered?: boolean;
+  requiresVerification?: boolean;
+  verificationReason?: "CADASTRO_INICIAL" | "AUDITORIA_ALEATORIA" | null;
 }
 
 export interface AuthSuccessResult {

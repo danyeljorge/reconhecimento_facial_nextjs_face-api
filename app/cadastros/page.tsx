@@ -35,6 +35,7 @@ interface CadastroUser {
   userType: string;
   email: string;
   faceImage?: string | null;
+  hasFaceRegistered?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -362,6 +363,9 @@ export default function CadastrosPage() {
                     Tipo
                   </th>
                   <th scope="col" className="px-6 py-4">
+                    Biometria Catraca
+                  </th>
+                  <th scope="col" className="px-6 py-4">
                     Data
                   </th>
                   <th scope="col" className="px-6 py-4 text-right">
@@ -402,6 +406,19 @@ export default function CadastrosPage() {
                         <BadgeCheck className="w-3.5 h-3.5 text-indigo-600" />
                         {user.userType}
                       </span>
+                    </td>
+
+                    <td className="px-6 py-4 text-xs">
+                      {user.hasFaceRegistered ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                          <span>Ativa</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                          <span>Pendente</span>
+                        </span>
+                      )}
                     </td>
 
                     <td className="px-6 py-4 text-slate-500 text-xs">

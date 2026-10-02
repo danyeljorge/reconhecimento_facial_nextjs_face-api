@@ -3,10 +3,16 @@ export interface UserProfileDTO {
   name: string;
   cpf: string;
   siap: string;
-  ciap: string;
+  ciap?: string;
   userType: string;
   email: string;
   faceImage?: string | null;
+  hasFaceRegistered: boolean;
+  accessCountSinceLastVerification: number;
+  nextVerificationTrigger: number;
+  lastVerificationAt?: string | null;
+  requiresVerification?: boolean;
+  verificationReason?: "CADASTRO_INICIAL" | "AUDITORIA_ALEATORIA" | null;
   createdAt: string;
 }
 
@@ -34,6 +40,10 @@ export interface UserListItemDTO {
   userType: string;
   email: string;
   faceImage?: string | null;
+  hasFaceRegistered?: boolean;
+  accessCountSinceLastVerification?: number;
+  nextVerificationTrigger?: number;
+  lastVerificationAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }

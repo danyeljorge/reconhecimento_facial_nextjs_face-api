@@ -220,10 +220,35 @@ Foram executados scripts de validação de ponta a ponta:
 
 ---
 
-## 6. Conclusão
+## 6. Conclusão da Refatoração Inicial
 
-A refatoração arquitetural foi concluída com êxito. O sistema agora apresenta:
-1. **Alta Coesão e Baixo Acoplamento:** As camadas de Frontend, Controllers, Serviços, Repositórios e Visão Computacional possuem limites estritos e interfaces claras.
-2. **Substitutibilidade Futura:** A biblioteca `face-api.js` está isolada atrás da interface `IFaceEngine`. Caso o motor de visão computacional seja substituído por MediaPipe, ONNX Runtime ou outra solução, apenas a implementação do engine precisará ser adaptada.
-3. **Segurança e Privacidade:** O Liveness é 100% client-side (LGPD compliant), e o acesso a dados e credenciais é gerenciado de forma segura no backend por meio de serviços e repositórios.
-4. **Preservação Funcional:** Nenhuma funcionalidade existente do MVP foi quebrada.
+A refatoração arquitetural foi concluída com êxito. O sistema apresenta alta coesão e baixo acoplamento nas camadas de Frontend, Controllers, Serviços, Repositórios e Visão Computacional.
+
+---
+
+## 7. Atualização do Sistema: Liveness Otimizado, Novo Layout e Integração SISRU / Catracas (02/10/2026)
+
+Em atendimento às novas diretrizes operacionais de controle de acesso, o sistema recebeu as seguintes implementações:
+
+### 7.1 Reposicionamento do Card de Desafios (UI/UX)
+- **Localização:** O bloco de instruções do desafio atual foi movido para **CIMA da câmera** (`components/LivenessSecurityVerification.tsx`).
+- **Benefício:** O usuário lê primeiro a instrução e o desafio a ser executado antes de posicionar o rosto na câmera, eliminando a necessidade de rolar a página ou desviar os olhos do enquadramento.
+
+### 7.2 Redução da Dificuldade e Calibração de Liveness
+- **Sequências de 2 Etapas:** Substituição de sequências longas por ciclos rápidos e amigáveis de 2 etapas (ex.: *Centralizar rosto* $\rightarrow$ *Piscar suavemente* ou *Sorriso leve*).
+- **Flexibilização de Limiares:**
+  - **Head Yaw (Rotação):** Aceita viradas sutis ($15^\circ$–$20^\circ$) com limites de $0.72$ e $1.38$ (anteriormente exigia $0.58$ e $1.75$).
+  - **Sorriso:** Ativação com `happy > 0.32` ou proporção labial moderada (anteriormente exigia $0.50$ e $0.90$).
+  - **Piscada:** Calibração adaptativa com detecção de ciclo natural de reabertura sem esforço forçado.
+  - **Enquadramento:** Proporção facial ampliada para $10\%$ a $94\%$ da largura do vídeo, acomodando diferentes câmeras e distâncias confortáveis.
+  - **Confirmação Ágil:** Redução do requisito de confirmação temporal consecutiva para 2 frames.
+
+### 7.3 Lógica Condicional de Acesso e Auditoria Aleatória (3 a 5 Acessos)
+- **Acesso Direto para Usuários com Biometria:** Usuários que já possuem o rosto cadastrado entram direto no sistema com as abas confidenciais (Extrato e Perfil) liberadas, sem exigir a câmera de liveness a cada login.
+- **Sorteio de Auditoria Periódica:** Cada login contabiliza um acesso. Quando o usuário atinge a meta sorteada aleatoriamente entre **3 e 5 acessos**, o sistema exige uma prova de vida rápida para revalidar a presença física. Após a aprovação, o contador é resetado para 0 e um novo gatilho entre 3 e 5 é sorteado.
+- **Campos adicionados no Prisma:** `hasFaceRegistered`, `accessCountSinceLastVerification`, `nextVerificationTrigger`, `lastVerificationAt`.
+
+### 7.4 Integração SISRU & Despacho para Catracas
+- **Serviço de Integração Criado (`lib/services/turnstile-service.ts`):** Envia os dados e a foto validada via requisição HTTP direta para o sistema da catraca e SISRU.
+- **Sem Retenção de Foto no Banco Local:** A foto em Base64 não é salva no banco SQLite local por padrão (`SAVE_LOCAL_PHOTO=false`), liberando espaço de armazenamento e garantindo conformidade com a LGPD, delegando a retenção biométrica para a infraestrutura de controle de acesso físico.
+

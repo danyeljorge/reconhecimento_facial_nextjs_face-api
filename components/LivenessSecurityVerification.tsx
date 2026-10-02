@@ -40,6 +40,7 @@ interface LivenessSecurityVerificationProps {
   onVerified: (capturedPhotoBase64: string) => void;
   onCancel?: () => void;
   userName?: string;
+  verificationReason?: "CADASTRO_INICIAL" | "AUDITORIA_ALEATORIA" | null;
 }
 
 const TOTAL_TIMEOUT_SECONDS = 60;
@@ -48,6 +49,7 @@ export function LivenessSecurityVerification({
   onVerified,
   onCancel,
   userName,
+  verificationReason,
 }: LivenessSecurityVerificationProps) {
   const [uiState, setUiState] = useState<LivenessUIState>("INICIANDO");
   const [statusMessage, setStatusMessage] = useState<string>("Preparando câmera...");
@@ -187,13 +189,13 @@ export function LivenessSecurityVerification({
                 // Checa enquadramento adequado (tamanho mínimo e máximo razoável)
                 const videoW = video.videoWidth || 640;
                 const faceRatio = detection.box.width / videoW;
-                const framed = faceRatio >= 0.13 && faceRatio <= 0.88;
+                const framed = faceRatio >= 0.10 && faceRatio <= 0.94;
                 setIsWellFramed(framed);
 
                 if (!framed) {
                   setStatusMessage("Ajuste a distância da câmera.");
                   setFeedbackText(
-                    faceRatio < 0.16
+                    faceRatio < 0.10
                       ? "Aproxime-se um pouco mais da câmera."
                       : "Afaste-se um pouco da câmera."
                   );
@@ -360,24 +362,36 @@ export function LivenessSecurityVerification({
 
   return (
     <div className="w-full max-w-2xl mx-auto bg-white border border-slate-200 rounded-3xl p-3 sm:p-6 md:p-8 shadow-sm">
-      {/* Cabeçalho */}
-      <div className="text-center mb-5 sm:mb-6">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 mb-2 sm:mb-3 shadow-xs">
+      {/* Cabeçalho dinâmico */}
+      <div className="text-center mb-4 sm:mb-5">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 mb-2 sm:mb-2.5 shadow-xs">
           <ShieldCheck className="w-3.5 h-3.5" />
-          <span>Verificação de segurança</span>
+          <span>
+            {verificationReason === "CADASTRO_INICIAL"
+              ? "Cadastro Biométrico Inicial (SISRU / Catraca)"
+              : verificationReason === "AUDITORIA_ALEATORIA"
+              ? "Confirmação Periódica de Segurança"
+              : "Verificação de segurança"}
+          </span>
         </div>
 
         <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-          Confirmação de Presença
+          {verificationReason === "CADASTRO_INICIAL"
+            ? "Cadastre sua Biometria Facial"
+            : "Confirmação de Presença"}
         </h2>
         <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
-          Precisamos confirmar que você é uma pessoa real diante da câmera. Siga as instruções na tela.
+          {verificationReason === "CADASTRO_INICIAL"
+            ? "Complete a validação abaixo para registrar sua biometria e liberar seu acesso nas catracas."
+            : verificationReason === "AUDITORIA_ALEATORIA"
+            ? "Verificação de presença aleatória sorteada pelo sistema de segurança para revalidar seu acesso."
+            : "Precisamos confirmar que você é uma pessoa real diante da câmera. Siga as instruções na tela."}
         </p>
       </div>
 
       {/* Temporizador e Etapas */}
       {uiState !== "SUCESSO" && uiState !== "FALHA" && (
-        <div className="mb-3 sm:mb-4 flex items-center justify-between px-1 sm:px-2">
+        <div className="mb-3 flex items-center justify-between px-1 sm:px-2">
           {/* Indicador de passos */}
           <div className="flex items-center gap-1.5">
             {steps.map((s, idx) => (
@@ -408,6 +422,46 @@ export function LivenessSecurityVerification({
           >
             <Clock className="w-3.5 h-3.5 text-slate-400" />
             <span>{remainingSeconds}s</span>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* NOVO LOCAL: CARTÃO DE INSTRUÇÃO DO DESAFIO ACIMA DA CÂMERA       */}
+      {/* O usuário visualiza imediatamente a instrução antes de olhar      */}
+      {/* ============================================================== */}
+      {uiState !== "SUCESSO" && uiState !== "FALHA" && currentStep && (
+        <div className="mb-3 sm:mb-4 p-3.5 sm:p-4 rounded-2xl bg-indigo-50/90 border border-indigo-200 shadow-xs flex items-center gap-3.5 sm:gap-4 transition-all">
+          <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-white border border-indigo-200 shadow-xs flex items-center justify-center shrink-0">
+            {renderStepIcon(currentStep.type)}
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[10px] sm:text-[11px] font-bold text-indigo-700 uppercase tracking-wider">
+                Desafio {currentStepIndex + 1} de {steps.length}
+              </span>
+              {stepProgress > 0 && (
+                <span className="text-[10px] font-bold text-indigo-600 font-mono">
+                  {stepProgress}%
+                </span>
+              )}
+            </div>
+
+            <h3 className="text-sm font-bold text-slate-900 mt-0.5 truncate">
+              {currentStep.title}
+            </h3>
+            <p className="text-xs text-slate-600 mt-0.5 font-medium">
+              {feedbackText || currentStep.instruction}
+            </p>
+
+            {/* Barra de progresso da etapa */}
+            <div className="w-full bg-indigo-100 rounded-full h-1.5 mt-2 overflow-hidden">
+              <div
+                className="bg-indigo-600 h-full transition-all duration-200 rounded-full"
+                style={{ width: `${stepProgress}%` }}
+              />
+            </div>
           </div>
         </div>
       )}
@@ -509,43 +563,6 @@ export function LivenessSecurityVerification({
           </div>
         )}
       </div>
-
-      {/* Cartão de Instrução do Desafio Atual */}
-      {uiState !== "SUCESSO" && uiState !== "FALHA" && currentStep && (
-        <div className="mt-5 p-4 rounded-2xl bg-indigo-50/70 border border-indigo-100 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-white border border-indigo-200 shadow-xs flex items-center justify-center shrink-0">
-            {renderStepIcon(currentStep.type)}
-          </div>
-
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-[11px] font-bold text-indigo-700 uppercase tracking-wider">
-                Desafio {currentStepIndex + 1} de {steps.length}
-              </span>
-              {stepProgress > 0 && (
-                <span className="text-[10px] font-bold text-indigo-600 font-mono">
-                  {stepProgress}%
-                </span>
-              )}
-            </div>
-
-            <h3 className="text-sm font-bold text-slate-900 mt-0.5 truncate">
-              {currentStep.title}
-            </h3>
-            <p className="text-xs text-slate-600 mt-0.5">
-              {feedbackText || currentStep.instruction}
-            </p>
-
-            {/* Barra de progresso da etapa */}
-            <div className="w-full bg-indigo-100 rounded-full h-1.5 mt-2 overflow-hidden">
-              <div
-                className="bg-indigo-600 h-full transition-all duration-200 rounded-full"
-                style={{ width: `${stepProgress}%` }}
-              />
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Nota técnica de segurança discreta */}
       <div className="mt-4 pt-3 border-t border-slate-100 text-center">

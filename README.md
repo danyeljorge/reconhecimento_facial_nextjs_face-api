@@ -89,59 +89,57 @@ FRONTEND (components/LivenessSecurityVerification.tsx)
 
 ---
 
-## 🔄 Fluxograma do Fluxo do Usuário
+---
+
+## 🔄 Fluxograma do Fluxo do Usuário & Controle de Catraca
 
 ```mermaid
 flowchart TD
-    A[Acesso à Aplicação] --> B{Possui Cadastro?}
+    A[Acesso à Aplicação] --> B{Possui Cadastro no SISRU?}
     B -- Não --> C[Cadastro em /cadastro\nNome, CPF, SIAP, Vínculo, Senha]
-    C --> D[Armazenamento Seguro no Repositório SQLite]
+    C --> D[Armazenamento Seguro no Repositório]
     D --> E[Login com CPF e Senha]
     B -- Sim --> E
-    E --> F[AuthController: Validação PBKDF2]
-    F --> G[Emissão de Sessão HTTP-Only Segura]
-    G --> H[Redirecionamento ao /dashboard]
-    H --> I[Barreira Biométrica: Desafio Liveness]
-    I --> J{Liveness Aprovado?}
-    J -- Não (Foto/Tela/Tempo) --> K[Acesso Bloqueado\nPossibilidade de Repetir]
-    J -- Sim (Pessoa Real com Movimento) --> L[Salva Imagem Validada no Perfil]
-    L --> M[Desbloqueio Completo: Extrato & Perfil]
+    E --> F[Validação Criptográfica de Senha]
+    F --> G{Já possui Biometria Cadastrada?}
+    G -- Não (Primeiro Acesso) --> H[Obrigatório: Liveness Inicial de Cadastro]
+    G -- Sim --> I[Incrementa Contador de Acessos]
+    I --> J{Contador atingiu Sorteio 3 a 5?}
+    J -- Não --> K[Acesso Liberado Direto ao Painel!]
+    J -- Sim --> L[Auditoria Sorteada: Revalidação de Vivacidade Rápida]
+    H --> M[Desafios Rápidos no Topo da Câmera]
+    L --> M
+    M --> N{Liveness Aprovado?}
+    N -- Não --> O[Acesso Bloqueado / Tentar Novamente]
+    N -- Sim --> P[Despacho da Foto para Catraca / SISRU\n(Sem retenção desnecessária local)]
+    P --> Q[Reseta Contador & Sorteia Novo Gatilho (3-5)]
+    Q --> K
+    K --> R[Painel Completo Desbloqueado: Extrato & Perfil]
 ```
 
 ---
 
-## 🧠 Motor de Liveness & Anti-Spoofing (`lib/services/liveness-service.ts`)
+## 🧠 Motor de Liveness & Anti-Spoofing Acessível (`lib/services/liveness-service.ts`)
 
-A validação de vivacidade foi desenvolvida para barrar ataques de apresentação (fotos estáticas impressas, telas de smartphone, tablets ou monitores) sem depender de APIs externas pagas.
+A validação de vivacidade foi projetada para combinar **alta segurança contra ataques de apresentação (fotos em papel, telas de celular/monitores)** com **baixa fricção e máxima usabilidade**:
 
-### 1. Cálculos Biométricos em Tempo Real (68 Landmarks)
+### 1. Instruções no Topo (Card Acima da Câmera)
+- O **card do desafio atual foi posicionado diretamente ACIMA da câmera**, garantindo que o usuário visualize a orientação de primeira antes de olhar para a lente.
+- Ícone dinâmico representativo (piscar, sorrir leve, virar a cabeça suavemente).
+- Barra de progresso integrada em tempo real.
 
-O sistema extrai 68 coordenadas anatômicas faciais a cada frame e calcula métricas geométricas normalizadas:
+### 2. Dificuldade Calibrada & Desafios Rápidos (2 Etapas)
+- **Sequências Amigáveis:** Em vez de etapas exaustivas, cada sessão gera sequências rápidas de **2 etapas** (ex: *Olhar para o centro* $\rightarrow$ *Piscar suavemente* ou *Sorrir de leve*).
+- **Tolerância de Rotação (Head Yaw):** Exige apenas uma virada leve de $15^\circ$ a $20^\circ$ (`yawRatio < 0.72` ou `> 1.38`), evitando que o usuário perca o foco da câmera.
+- **Detecção Suave de Sorriso:** Limiar flexível (`expressions.happy > 0.32` ou proporção labial moderada), aceitando sorrisos naturais e discretos.
+- **Piscada Confortável:** Reconhecimento do ciclo biológico natural de fechar e reabrir os olhos sem esforço forçado.
+- **Enquadramento Inclusivo:** Aceita distâncias variadas da webcam/câmera frontal (`faceRatio` de 10% a 94% da largura da imagem).
+- **Resposta Instantânea:** Confirmação por 2 frames consecutivos, eliminando travamentos em aparelhos com menor taxa de quadros (FPS).
 
-- **EAR (Eye Aspect Ratio):** Mede a razão entre as distâncias verticais e horizontais dos olhos para rastrear o ciclo biológico de piscar:
-  $$\text{EAR} = \frac{\|p_2 - p_6\| + \|p_3 - p_5\|}{2 \cdot \|p_1 - p_4\|}$$
-  O motor rastreia a transição contínua: $\text{Olho Aberto} \rightarrow \text{Olhos Fechando} (\text{EAR} < 0.238) \rightarrow \text{Reabertura}$, confirmando a piscada natural.
-- **Head Yaw Ratio (Rotação Horizontal):** Razão entre a posição do nariz (ponto 30) e os extremos mandibulares (pontos 2 e 14) para detectar se o usuário virou a cabeça para a esquerda ou direita:
-  $$\text{Yaw Ratio} = \frac{|x_{\text{nariz}} - x_{\text{mandíbula esquerda}}|}{|x_{\text{mandíbula direita}} - x_{\text{nariz}}|}$$
-- **Mouth Ratio & Expressões:** Razão entre a largura da comissura labial (pontos 48 e 54) e a distância interocular, combinada com a rede neural `faceExpressionNet` para detecção de sorrisos.
-- **Centroide:** Ponto médio ponderado das 68 marcações para aferir estabilidade de enquadramento.
-
-### 2. Desafios Dinâmicos Multietapas (Anti-Replay)
-
-Para evitar vídeos pré-gravados, cada sessão de liveness sorteia uma sequência imprevisível de desafios que devem ser cumpridos em ordem:
-- `look_center`: Centralizar o rosto e olhar para a câmera;
-- `blink_twice`: Piscar os olhos naturalmente diante da lente;
-- `turn_left`: Virar o rosto suavemente para a esquerda;
-- `turn_right`: Virar o rosto suavemente para a direita;
-- `smile`: Sorrir para a câmera;
-- `return_center` e `return_neutral`: Retornar à posição frontal e expressão neutra.
-
-### 3. Detecção de Ataques de Apresentação (PAD - Presentation Attack Detection)
-
-Antes de emitir o veredito positivo, o motor avalia o histórico temporal dos frames coletados:
-- **Variância de Movimento Involuntário (Jitter Biológico):** Um ser humano vivo apresenta micro-variações naturais na musculatura e posição. Se o EAR e o Yaw apresentarem variância matemática próxima a zero durante a sessão, o sistema identifica uma foto estática e **reprova com alerta de Spoofing**.
-- **Ritmo Temporal Plausível:** O sistema exige no mínimo 15 frames analisados e tempo total superior a 1,2 segundos para impedir injeções artificiais de frames acelerados.
-- **Temporizador de 60 Segundos:** Contagem regressiva ativa com encerramento automático caso não haja interação.
+### 3. Integração SISRU & Despacho para Catracas (`turnstile-service.ts`)
+- **Sem Retenção Local Desnecessária:** A foto capturada após aprovação no liveness não fica armazenada permanentemente no banco SQLite local.
+- **Envio Direto ao Sistema de Acesso:** A foto e os identificadores (`cpf`, `siap`, `userType`, `timestamp`) são enviados via webhook/API HTTP para o banco de dados da **catraca física** e sincronizados com o **SISRU**.
+- **Controle Periódico Aleatório (3 a 5 acessos):** Usuários com biometria já cadastrada entram direto no sistema. A cada **3 a 5 acessos sorteados aleatoriamente**, o sistema requisita uma prova de vida rápida para auditoria e revalidação da presença.
 
 ---
 

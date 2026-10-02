@@ -152,18 +152,26 @@ FLUXO BIOMÉTRICO (PROVA DE VIDA / LIVENESS):
 10. Frontend redireciona para /dashboard
 ```
 
-### 3.2 Fluxo de Prova de Vida (Liveness pós-login)
+### 3.2 Fluxo de Cadastro e Auditoria Biométrica (Liveness + Catraca SISRU)
 ```text
-1. No /dashboard, abas de Perfil e Extrato permanecem bloqueadas
-2. Componente LivenessSecurityVerification inicia CameraService e FaceEngine
-3. LivenessService gera sequência aleatória de desafios (ex: Centralizar -> Piscar -> Virar Rosto)
-4. Laço de detecção captura frames contínuos (~12 fps)
-5. LivenessService calcula EAR, Yaw e avalia cumprimento de cada etapa por múltiplos frames
-6. LivenessService executa Anti-Spoofing PAD (detecta ausência de variância para bloquear fotos impressas)
-7. Emitido LivenessVerdict: { success: true, livenessPassed: true, spoofDetected: false }
-8. CameraService captura snapshot em alta qualidade
-9. Frontend salva foto via POST /api/user/face (UserController -> UserService -> UserRepository)
-10. Dashboard desbloqueia acesso às abas de Perfil e Extrato
+1. No login ou consulta de sessão, o sistema avalia o status biométrico:
+   - Se hasFaceRegistered === false: EXIGE validação de cadastro inicial.
+   - Se hasFaceRegistered === true: incrementa contador de acessos.
+     - Se acessos >= gatilho sorteado (3 a 5): EXIGE auditoria rápida de presença.
+     - Caso contrário: LIBERA ACESSO DIRETO ao painel sem câmera!
+2. Quando a verificação é necessária, LivenessSecurityVerification exibe o card de instrução no TOPO (acima da câmera).
+3. LivenessService gera sequência de 2 etapas rápidas e acessíveis (ex: Centralizar -> Piscar suave ou Sorrir).
+4. Ao cumprir as etapas, Anti-Spoofing PAD confirma a presença física real.
+5. CameraService captura o snapshot biométrico.
+6. Frontend despacha para POST /api/user/face.
+7. UserController aciona TurnstileService.sendPhotoToTurnstile():
+   - A foto é enviada diretamente para a API/banco da catraca e SISRU para liberação física.
+   - A foto pesada NÃO é mantida no banco SQLite local.
+8. UserService.completeVerification():
+   - Marca hasFaceRegistered = true.
+   - Reseta contador de acessos para 0.
+   - Sorteia novo gatilho aleatório entre 3 e 5 acessos para a próxima auditoria.
+9. Dashboard desbloqueia acesso completo às abas confidenciais (Perfil e Extrato).
 ```
 
 ### 3.3 Fluxo de Cadastro de Usuário
@@ -175,9 +183,9 @@ FLUXO BIOMÉTRICO (PROVA DE VIDA / LIVENESS):
 5. AuthController -> AuthService.register()
 6. AuthService verifica duplicidade de CPF, E-mail e SIAP via UserRepository
 7. AuthService aplica hashPassword() com salt aleatório
-8. UserRepository.create() persiste no SQLite
+8. UserRepository.create() persiste no SQLite com hasFaceRegistered = false
 9. AuthService autentica automaticamente o usuário recém-criado
-10. Redirecionamento suave para /dashboard
+10. Redirecionamento suave para /dashboard para realização do cadastro biométrico
 ```
 
 ---
@@ -187,11 +195,13 @@ FLUXO BIOMÉTRICO (PROVA DE VIDA / LIVENESS):
 | Responsabilidade | Localização |
 | :--- | :--- |
 | **Interface com Usuário** | `app/`, `components/` |
+| **Instruções e Desafios no Topo** | `components/LivenessSecurityVerification.tsx` |
 | **Orquestração de Rotas HTTP** | `lib/controllers/auth-controller.ts`, `lib/controllers/user-controller.ts` |
 | **Regras de Negócio de Autenticação** | `lib/services/auth-service.ts` |
 | **Regras de Negócio de Usuários e Extrato** | `lib/services/user-service.ts` |
+| **Integração com Catracas & SISRU** | `lib/services/turnstile-service.ts` |
 | **Acesso ao Banco de Dados (Prisma)** | `lib/repositories/user-repository.ts` |
 | **Controle de Câmera e Snapshot** | `lib/camera/camera-service.ts` |
 | **Isolamento da Biblioteca Face API** | `lib/face-engine/face-engine.ts` |
-| **Desafios e Anti-Spoofing (Liveness)** | `lib/services/liveness-service.ts`, `lib/liveness/liveness-engine.ts` |
+| **Desafios Rápidos e Anti-Spoofing (Liveness)** | `lib/services/liveness-service.ts`, `lib/liveness/liveness-engine.ts` |
 | **DTOs e Tipos Compartilhados** | `lib/types/` |

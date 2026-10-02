@@ -175,13 +175,13 @@ export function extractFrameMetrics(
   const mouthRatio = calculateMouthRatio(pts);
   const centroid = calculateCentroid(pts);
 
-  // Limiares biométricos calibrados para webcams reais em navegadores
-  const isBlinking = ear < 0.238; // Olho fechado ou semicerrado durante piscada
-  const isTurningLeft = yawRatio < 0.58; // Virou à esquerda na câmera espelhada
-  const isTurningRight = yawRatio > 1.75; // Virou à direita na câmera espelhada
-  const isCentered = yawRatio >= 0.70 && yawRatio <= 1.40;
-  const isSmiling = (expressions?.happy ?? 0) > 0.50 || mouthRatio > 0.90;
-  const isNeutral = (expressions?.happy ?? 0) < 0.28 && mouthRatio < 0.88;
+  // Limiares biométricos calibrados com alta usabilidade para webcams reais em navegadores
+  const isBlinking = ear < 0.250; // Piscada natural detectada
+  const isTurningLeft = yawRatio < 0.72; // Leve virada à esquerda
+  const isTurningRight = yawRatio > 1.38; // Leve virada à direita
+  const isCentered = yawRatio >= 0.72 && yawRatio <= 1.38;
+  const isSmiling = (expressions?.happy ?? 0) > 0.32 || mouthRatio > 0.78; // Sorriso suave e acessível
+  const isNeutral = (expressions?.happy ?? 0) < 0.32 && mouthRatio < 0.82;
 
   return {
     timestamp: Date.now(),
@@ -207,28 +207,28 @@ export function extractFrameMetrics(
 const STEP_DEFINITIONS: Record<ChallengeStepType, { title: string; instruction: string; hint: string }> = {
   look_center: {
     title: "Olhe para a câmera",
-    instruction: "Mantenha o rosto centralizado e olhe para frente",
+    instruction: "Mantenha o rosto centralizado olhando para frente",
     hint: "Posicione seu rosto confortavelmente na área indicada",
   },
   blink_twice: {
     title: "Pisque os olhos",
-    instruction: "Pisque os olhos de forma natural diante da câmera",
+    instruction: "Pisque os olhos suavemente diante da câmera",
     hint: "Feche e abra os olhos com tranquilidade",
   },
   turn_left: {
-    title: "Vire o rosto para a esquerda",
-    instruction: "Gire suavemente a cabeça para a sua esquerda",
-    hint: "Mantenha o movimento por alguns instantes",
+    title: "Vire levemente à esquerda",
+    instruction: "Gire suavemente a cabeça um pouco para a esquerda",
+    hint: "Um movimento suave já é suficiente",
   },
   turn_right: {
-    title: "Vire o rosto para a direita",
-    instruction: "Gire suavemente a cabeça para a sua direita",
-    hint: "Mantenha o movimento por alguns instantes",
+    title: "Vire levemente à direita",
+    instruction: "Gire suavemente a cabeça um pouco para a direita",
+    hint: "Um movimento suave já é suficiente",
   },
   smile: {
-    title: "Dê um sorriso",
-    instruction: "Sorria para a câmera mostrando os dentes ou expressão alegre",
-    hint: "Mantenha a expressão sorridente por instantes",
+    title: "Dê um sorriso leve",
+    instruction: "Sorria suavemente para a câmera",
+    hint: "Um sorriso discreto já é suficiente",
   },
   return_center: {
     title: "Volte para o centro",
@@ -236,14 +236,14 @@ const STEP_DEFINITIONS: Record<ChallengeStepType, { title: string; instruction: 
     hint: "Olhe novamente para o centro da tela",
   },
   return_neutral: {
-    title: "Volte à expressão neutra",
-    instruction: "Relaxe o rosto para a expressão neutra",
-    hint: "Mantenha a expressão natural sem sorrir",
+    title: "Relaxe a expressão",
+    instruction: "Volte à expressão natural e relaxada",
+    hint: "Mantenha a expressão natural",
   },
 };
 
 /**
- * Gera sequências de desafios aleatórias e não previsíveis.
+ * Gera sequências de desafios aleatórias, rápidas e de baixa fricção.
  * Cada sequência é garantidamente diferente para evitar ataques de replay com vídeos pré-gravados.
  */
 export function generateRandomChallengeSequence(excludeSequenceId?: number): {
@@ -251,20 +251,18 @@ export function generateRandomChallengeSequence(excludeSequenceId?: number): {
   steps: ChallengeStep[];
 } {
   const templates: ChallengeStepType[][] = [
-    // Opção 1: Centralizar -> Piscar 2x -> Virar Esquerda -> Retornar ao Centro
-    ["look_center", "blink_twice", "turn_left", "return_center"],
-    // Opção 2: Centralizar -> Virar Direita -> Retornar ao Centro -> Piscar 2x
-    ["look_center", "turn_right", "return_center", "blink_twice"],
-    // Opção 3: Centralizar -> Sorrir -> Voltar ao Neutro -> Piscar 2x
-    ["look_center", "smile", "return_neutral", "blink_twice"],
-    // Opção 4: Centralizar -> Virar Esquerda -> Retornar ao Centro -> Sorrir -> Voltar ao Neutro
-    ["look_center", "turn_left", "return_center", "smile", "return_neutral"],
-    // Opção 5: Centralizar -> Piscar 2x -> Virar Direita -> Retornar ao Centro
-    ["look_center", "blink_twice", "turn_right", "return_center"],
-    // Opção 6: Centralizar -> Sorrir -> Voltar ao Neutro -> Virar Esquerda -> Retornar ao Centro
-    ["look_center", "smile", "return_neutral", "turn_left", "return_center"],
-    // Opção 7: Centralizar -> Virar Direita -> Retornar ao Centro -> Virar Esquerda -> Retornar ao Centro
-    ["look_center", "turn_right", "return_center", "turn_left", "return_center"],
+    // Opção 1: Centralizar -> Piscar suavemente
+    ["look_center", "blink_twice"],
+    // Opção 2: Centralizar -> Sorriso leve
+    ["look_center", "smile"],
+    // Opção 3: Centralizar -> Virada leve à esquerda -> Retornar ao centro
+    ["look_center", "turn_left", "return_center"],
+    // Opção 4: Centralizar -> Virada leve à direita -> Retornar ao centro
+    ["look_center", "turn_right", "return_center"],
+    // Opção 5: Centralizar -> Sorriso leve -> Neutro
+    ["look_center", "smile", "return_neutral"],
+    // Opção 6: Centralizar -> Piscar -> Sorriso leve
+    ["look_center", "blink_twice", "smile"],
   ];
 
   let selectedIdx = Math.floor(Math.random() * templates.length);
@@ -354,7 +352,7 @@ export class LivenessSessionManager {
       this.baselineEAR = Math.max(0.24, Math.min(0.38, this.baselineEAR * 0.85 + metrics.ear * 0.15));
     }
 
-    const MIN_CONSECUTIVE = 3; // Mínimo de frames consecutivos para confirmar ação real
+    const MIN_CONSECUTIVE = 2; // Validação ágil com 2 frames consecutivos
 
     switch (currentStep.type) {
       // 1. OLHAR PARA O CENTRO
@@ -389,8 +387,8 @@ export class LivenessSessionManager {
 
       // 2. PISCAR OS OLHOS (Transição natural: Olhos Abertos -> Olhos Fechando -> Reabertura)
       case "blink_twice": {
-        const isEyeClosed = metrics.isBlinking || metrics.ear < 0.238 || metrics.ear < (this.baselineEAR * 0.82);
-        const isEyeOpen = metrics.ear >= 0.235 || metrics.ear >= (this.baselineEAR * 0.86);
+        const isEyeClosed = metrics.isBlinking || metrics.ear < 0.250 || metrics.ear < (this.baselineEAR * 0.86);
+        const isEyeOpen = metrics.ear >= 0.230 || metrics.ear >= (this.baselineEAR * 0.88);
 
         if (this.blinkState === "waiting_blink") {
           if (isEyeClosed) {
@@ -407,7 +405,7 @@ export class LivenessSessionManager {
             isStepComplete: false,
             progressPercent: 20,
             actionDetected: null,
-            feedbackText: "Pisque os olhos naturalmente diante da câmera...",
+            feedbackText: "Pisque os olhos suavemente diante da câmera...",
           };
         }
 

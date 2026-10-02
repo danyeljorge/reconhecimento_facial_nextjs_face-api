@@ -16,16 +16,20 @@ model Person {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  name         String
-  cpf          String   @unique
-  siap         String   @unique
-  userType     String   // Graduação, Pós-graduação, Professor, Servidor
-  email        String   @unique
-  passwordHash String
-  faceImage    String?  // Armazenamento da imagem no SQL após reconhecimento pós-login
+  id                               String    @id @default(cuid())
+  name                             String
+  cpf                              String    @unique
+  siap                             String    @default("")
+  userType                         String    @default("Graduação") // Graduação, Pós-graduação, Professor, Servidor
+  email                            String    @unique
+  passwordHash                     String
+  faceImage                        String?   // Imagem facial opcional (em integração com catraca/SISRU, a foto é enviada externamente)
+  hasFaceRegistered                Boolean   @default(false)
+  accessCountSinceLastVerification Int       @default(0)
+  nextVerificationTrigger          Int       @default(3) // Sorteado aleatoriamente entre 3 e 5
+  lastVerificationAt               DateTime?
 
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt                        DateTime  @default(now())
+  updatedAt                        DateTime  @updatedAt
 }
 

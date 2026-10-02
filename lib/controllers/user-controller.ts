@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { userService, UserService } from "@/lib/services/user-service";
 import { authService, AuthService } from "@/lib/services/auth-service";
+import { turnstileService } from "@/lib/services/turnstile-service";
 import { validateRegisterFields } from "@/lib/validation";
 
 export class UserController {
@@ -110,17 +111,44 @@ export class UserController {
         );
       }
 
-      const updated = await this.service.updateFaceImage(session.userId, faceImage);
+      const userProfile = await this.service.getUserProfile(session.userId);
+      if (!userProfile) {
+        return NextResponse.json(
+          { success: false, error: "Usuário não encontrado." },
+          { status: 404 }
+        );
+      }
+
+      // Envia foto e metadados para a integração com a catraca / SISRU
+      const turnstileResult = await turnstileService.sendPhotoToTurnstile({
+        userId: userProfile.id,
+        name: userProfile.name,
+        cpf: userProfile.cpf,
+        siap: userProfile.siap,
+        userType: userProfile.userType,
+        photoBase64: faceImage,
+        timestamp: new Date().toISOString(),
+      });
+
+      // Se a flag SAVE_LOCAL_PHOTO não estiver ativa, não salva a imagem localmente (null)
+      const photoToStore = turnstileService.shouldSaveLocalPhoto() ? faceImage : null;
+
+      const completion = await this.service.completeVerification(
+        session.userId,
+        photoToStore
+      );
 
       return NextResponse.json({
         success: true,
-        message: "Imagem de confirmação de presença atualizada com sucesso.",
-        user: updated,
+        message: "Presença validada e biometria despachada para a catraca com sucesso.",
+        turnstileSync: turnstileResult,
+        user: completion.user,
+        nextVerificationTrigger: completion.nextVerificationTrigger,
       });
     } catch (error) {
       console.error("Erro no UserController.handleUpdateFace:", error);
       return NextResponse.json(
-        { success: false, error: "Erro ao atualizar biometria facial." },
+        { success: false, error: "Erro ao processar biometria facial." },
         { status: 500 }
       );
     }

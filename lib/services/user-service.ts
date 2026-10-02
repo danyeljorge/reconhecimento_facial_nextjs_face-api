@@ -66,9 +66,23 @@ export class UserService {
   }
 
   /**
-   * Atualiza a imagem facial pós-liveness
+   * Registra acesso do usuário e avalia se exige verificação facial (primeiro cadastro ou sorteio de 3-5 acessos)
    */
-  async updateFaceImage(userId: string, faceImage: string) {
+  async recordAccessAndEvaluateVerification(userId: string) {
+    return this.userRepo.recordAccessAndEvaluateVerification(userId);
+  }
+
+  /**
+   * Conclui a verificação com sucesso, registrando o estado, resetando contadores e sorteando novo gatilho
+   */
+  async completeVerification(userId: string, faceImage?: string | null) {
+    return this.userRepo.completeVerification(userId, faceImage);
+  }
+
+  /**
+   * Atualiza a imagem facial pós-liveness (se configurado)
+   */
+  async updateFaceImage(userId: string, faceImage: string | null) {
     return this.userRepo.updateFaceImage(userId, faceImage);
   }
 }
@@ -84,3 +98,4 @@ export async function getUserProfile(userId: string): Promise<UserProfileDTO | n
 export async function getUserStatement(userId: string): Promise<UserStatementDTO> {
   return userService.getUserStatement(userId);
 }
+

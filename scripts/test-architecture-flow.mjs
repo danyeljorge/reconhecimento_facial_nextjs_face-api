@@ -148,7 +148,7 @@ async function runTests() {
   // -------------------------------------------------------------
   console.log("\n--- 4. Motor de Liveness e Anti-Spoofing (PAD) ---");
   const session = new LivenessSessionManager();
-  assert(session.steps.length >= 3, "Sessão multietapas gerou no mínimo 3 desafios aleatórios");
+  assert(session.steps.length >= 2, "Sessão multietapas gerou no mínimo 2 desafios aleatórios amigáveis");
   assert(typeof session.sequenceId === "number", "Sequência aleatória identificada com sequenceId");
 
   const currentStep = session.getCurrentStep();

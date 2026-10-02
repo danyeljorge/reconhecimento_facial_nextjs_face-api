@@ -64,9 +64,19 @@ export default function DashboardPage() {
           return;
         }
 
-        setProfile(sessionData.user);
-        if (sessionData.user.faceImage) {
-          setCapturedPhotoUrl(sessionData.user.faceImage);
+        const user = sessionData.user;
+        setProfile(user);
+        if (user.faceImage) {
+          setCapturedPhotoUrl(user.faceImage);
+        }
+
+        // Regra de Negócio:
+        // O liveness só é exibido obrigatoriamente para quem NÃO tem rosto cadastrado,
+        // ou quando o usuário é sorteado após 3-5 acessos (requiresVerification === true).
+        if (!user.requiresVerification) {
+          setIsLivenessValidated(true);
+        } else {
+          setIsLivenessValidated(false);
         }
 
         // Carregar extrato
@@ -99,17 +109,35 @@ export default function DashboardPage() {
 
   const handleLivenessSuccess = async (photoBase64: string) => {
     setCapturedPhotoUrl(photoBase64);
-    setProfile((prev) => (prev ? { ...prev, faceImage: photoBase64 } : prev));
     setIsLivenessValidated(true);
+    setProfile((prev) =>
+      prev
+        ? {
+            ...prev,
+            hasFaceRegistered: true,
+            requiresVerification: false,
+            verificationReason: null,
+            ...(photoBase64 ? { faceImage: photoBase64 } : {}),
+          }
+        : prev
+    );
 
     try {
-      await fetch("/api/user/face", {
+      const res = await fetch("/api/user/face", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ faceImage: photoBase64 }),
       });
+      const data = await res.json();
+      if (data.user) {
+        setProfile((prev) => ({
+          ...(prev || data.user),
+          ...data.user,
+          requiresVerification: false,
+        }));
+      }
     } catch (e) {
-      console.warn("Aviso ao salvar foto de avatar:", e);
+      console.warn("Aviso ao despachar biometria facial para catraca/SISRU:", e);
     }
   };
 
@@ -596,13 +624,13 @@ export default function DashboardPage() {
                     <div>
                       <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-300 mb-2">
                         <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-                        Verificação concluída
+                        {profile?.hasFaceRegistered ? "Biometria Ativa & Liberada" : "Verificação concluída"}
                       </span>
                       <h2 className="text-2xl font-black text-slate-900 tracking-tight">
-                        Pessoa real confirmada.
+                        {profile?.hasFaceRegistered ? "Acesso à Catraca Liberado" : "Pessoa real confirmada"}
                       </h2>
                       <p className="text-sm text-slate-600 mt-2 max-w-md mx-auto">
-                        Sua presença física foi validada com sucesso através dos desafios multietapas de liveness. Os menus de <strong className="text-indigo-600">Extrato</strong> e <strong className="text-indigo-600">Perfil</strong> estão desbloqueados.
+                        Sua biometria facial está ativa e sincronizada com o sistema de controle de acesso (SISRU / Catracas). Os menus de <strong className="text-indigo-600">Extrato</strong> e <strong className="text-indigo-600">Perfil</strong> estão totalmente liberados.
                       </p>
                     </div>
 
@@ -649,6 +677,7 @@ export default function DashboardPage() {
                     onVerified={handleLivenessSuccess}
                     onCancel={handleLogout}
                     userName={profile?.name}
+                    verificationReason={profile?.verificationReason}
                   />
                 )}
               </div>
