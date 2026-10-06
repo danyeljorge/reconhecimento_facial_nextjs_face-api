@@ -47,9 +47,6 @@ export class AuthService {
       return { success: false, error: "CPF ou senha incorretos." };
     }
 
-    // Registra o acesso e avalia a necessidade de liveness (novo cadastro ou auditoria aleatória 3-5)
-    const evaluation = await this.userRepo.recordAccessAndEvaluateVerification(user.id);
-
     // Cria token assinado e configura cookie seguro
     const token = createSessionToken({
       userId: user.id,
@@ -70,9 +67,9 @@ export class AuthService {
         userType: user.userType,
         siap: user.siap,
         ciap: user.siap,
-        hasFaceRegistered: evaluation.profile.hasFaceRegistered,
-        requiresVerification: evaluation.requiresVerification,
-        verificationReason: evaluation.verificationReason,
+        hasFaceRegistered: user.hasFaceRegistered,
+        requiresVerification: !user.hasFaceRegistered,
+        verificationReason: !user.hasFaceRegistered ? "CADASTRO_INICIAL" : null,
       },
     };
   }
@@ -200,16 +197,8 @@ export class AuthService {
     const profile = await this.userRepo.findProfileById(session.userId);
     if (!profile) return null;
 
-    // Avalia o status para a sessão ativa (sem incrementar o contador de acesso)
-    const requiresVerification =
-      !profile.hasFaceRegistered ||
-      profile.accessCountSinceLastVerification >= (profile.nextVerificationTrigger || 3);
-
-    const verificationReason = !profile.hasFaceRegistered
-      ? "CADASTRO_INICIAL"
-      : requiresVerification
-      ? "AUDITORIA_ALEATORIA"
-      : null;
+    const requiresVerification = !profile.hasFaceRegistered;
+    const verificationReason = requiresVerification ? "CADASTRO_INICIAL" : null;
 
     return {
       ...profile,

@@ -20,7 +20,7 @@ export interface AuthenticatedUserDTO {
   siap?: string;
   hasFaceRegistered?: boolean;
   requiresVerification?: boolean;
-  verificationReason?: "CADASTRO_INICIAL" | "AUDITORIA_ALEATORIA" | null;
+  verificationReason?: "CADASTRO_INICIAL" | null;
 }
 
 export interface AuthSuccessResult {

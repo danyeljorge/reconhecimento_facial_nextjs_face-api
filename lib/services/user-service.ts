@@ -66,14 +66,14 @@ export class UserService {
   }
 
   /**
-   * Registra acesso do usuário e avalia se exige verificação facial (primeiro cadastro ou sorteio de 3-5 acessos)
+    * Registra acesso do usuário e avalia se exige verificação facial apenas no primeiro acesso sem biometria.
    */
   async recordAccessAndEvaluateVerification(userId: string) {
     return this.userRepo.recordAccessAndEvaluateVerification(userId);
   }
 
   /**
-   * Conclui a verificação com sucesso, registrando o estado, resetando contadores e sorteando novo gatilho
+    * Conclui a verificação com sucesso e atualiza a biometria cadastrada.
    */
   async completeVerification(userId: string, faceImage?: string | null) {
     return this.userRepo.completeVerification(userId, faceImage);

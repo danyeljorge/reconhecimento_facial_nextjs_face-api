@@ -1,10 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { StepRegisterFlow } from "@/components/registration/StepRegisterFlow";
-import { formatCPF } from "@/lib/validation";
+import { useHomePage } from "@/hooks";
 import {
   ArrowRight,
   ShieldCheck,
@@ -18,68 +17,19 @@ import {
 } from "lucide-react";
 
 export default function HomePage() {
-  const router = useRouter();
-  const [viewMode, setViewMode] = useState<"initial" | "register" | "login">("initial");
-  const [hasSession, setHasSession] = useState<boolean>(false);
-
-  // Estado do formulário de login
-  const [loginCpf, setLoginCpf] = useState<string>("");
-  const [loginPassword, setLoginPassword] = useState<string>("");
-  const [loginLoading, setLoginLoading] = useState<boolean>(false);
-  const [loginError, setLoginError] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetch("/api/auth/session")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.authenticated) {
-          setHasSession(true);
-        }
-      })
-      .catch(() => {});
-  }, []);
-
-  const handleLoginSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoginError(null);
-
-    const cleanCpf = loginCpf.replace(/\D/g, "");
-    if (!cleanCpf) {
-      setLoginError("Informe o CPF.");
-      return;
-    }
-    if (!loginPassword) {
-      setLoginError("Informe a senha.");
-      return;
-    }
-
-    setLoginLoading(true);
-
-    try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          cpf: cleanCpf,
-          password: loginPassword,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || "CPF ou senha incorretos.");
-      }
-
-      // Redireciona para o dashboard para realizar a verificação de vivacidade
-      router.push("/dashboard");
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Erro ao efetuar login.";
-      setLoginError(msg);
-    } finally {
-      setLoginLoading(false);
-    }
-  };
+  const {
+    viewMode,
+    setViewMode,
+    hasSession,
+    loginCpf,
+    setLoginCpf,
+    loginPassword,
+    setLoginPassword,
+    loginLoading,
+    loginError,
+    handleLoginSubmit,
+    formatCPF,
+  } = useHomePage();
 
   return (
     <div className="flex-1 flex flex-col justify-between">

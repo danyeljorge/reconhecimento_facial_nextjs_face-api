@@ -26,6 +26,7 @@ import {
   FACE_MATCH_THRESHOLD,
   compareFace,
 } from "@/lib/face-recognition";
+import { recognitionService } from "@/services/recognition.service";
 
 
 export interface RecognizedPersonData {
@@ -194,8 +195,7 @@ export function RecognitionCameraView({
 
   const loadRegisteredPersons = async () => {
     try {
-      const res = await fetch("/api/recognize");
-      const data = await res.json();
+      const data = await recognitionService.listPersons();
       if (data.success && Array.isArray(data.persons)) {
         registeredPersonsRef.current = data.persons;
         setRegisteredCount(data.persons.length);

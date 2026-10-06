@@ -12,7 +12,7 @@ export interface UserProfileDTO {
   nextVerificationTrigger: number;
   lastVerificationAt?: string | null;
   requiresVerification?: boolean;
-  verificationReason?: "CADASTRO_INICIAL" | "AUDITORIA_ALEATORIA" | null;
+  verificationReason?: "CADASTRO_INICIAL" | null;
   createdAt: string;
 }
 

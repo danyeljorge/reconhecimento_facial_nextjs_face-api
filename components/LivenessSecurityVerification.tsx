@@ -40,7 +40,7 @@ interface LivenessSecurityVerificationProps {
   onVerified: (capturedPhotoBase64: string) => void;
   onCancel?: () => void;
   userName?: string;
-  verificationReason?: "CADASTRO_INICIAL" | "AUDITORIA_ALEATORIA" | null;
+  verificationReason?: "CADASTRO_INICIAL" | null;
 }
 
 const TOTAL_TIMEOUT_SECONDS = 60;
@@ -369,8 +369,6 @@ export function LivenessSecurityVerification({
           <span>
             {verificationReason === "CADASTRO_INICIAL"
               ? "Cadastro Biométrico Inicial (SISRU / Catraca)"
-              : verificationReason === "AUDITORIA_ALEATORIA"
-              ? "Confirmação Periódica de Segurança"
               : "Verificação de segurança"}
           </span>
         </div>
@@ -383,8 +381,6 @@ export function LivenessSecurityVerification({
         <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
           {verificationReason === "CADASTRO_INICIAL"
             ? "Complete a validação abaixo para registrar sua biometria e liberar seu acesso nas catracas."
-            : verificationReason === "AUDITORIA_ALEATORIA"
-            ? "Verificação de presença aleatória sorteada pelo sistema de segurança para revalidar seu acesso."
             : "Precisamos confirmar que você é uma pessoa real diante da câmera. Siga as instruções na tela."}
         </p>
       </div>

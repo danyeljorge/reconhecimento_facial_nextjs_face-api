@@ -143,7 +143,6 @@ export class UserController {
         message: "Presença validada e biometria despachada para a catraca com sucesso.",
         turnstileSync: turnstileResult,
         user: completion.user,
-        nextVerificationTrigger: completion.nextVerificationTrigger,
       });
     } catch (error) {
       console.error("Erro no UserController.handleUpdateFace:", error);

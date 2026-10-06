@@ -1,181 +1,22 @@
 "use client";
 
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
-import {
-  USER_TYPES,
-  UserType,
-  isValidCPF,
-  formatCPF,
-  isValidEmail,
-} from "@/lib/validation";
-import {
-  User,
-  CheckCircle2,
-  AlertCircle,
-  Loader2,
-  ArrowRight,
-} from "lucide-react";
-
-interface FormDataState {
-  name: string;
-  cpf: string;
-  siap: string;
-  userType: UserType;
-  email: string;
-  password: string;
-  confirmPassword: string;
-}
+import React from "react";
+import { USER_TYPES, UserType } from "@/lib/validation";
+import { CheckCircle2, AlertCircle, Loader2, ArrowRight } from "lucide-react";
+import { useRegisterFlow } from "@/hooks/useRegisterFlow";
 
 export function StepRegisterFlow() {
-  const router = useRouter();
-  const [currentStep, setCurrentStep] = useState<"dados" | "conclusao">("dados");
-
-  const [formData, setFormData] = useState<FormDataState>({
-    name: "",
-    cpf: "",
-    siap: "",
-    userType: "Graduação",
-    email: "",
-    password: "",
-    confirmPassword: "",
-  });
-
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({});
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [globalError, setGlobalError] = useState<string | null>(null);
-
-  const validateField = (field: keyof FormDataState, value: string) => {
-    switch (field) {
-      case "name":
-        if (!value.trim()) return "O nome completo é obrigatório.";
-        if (value.trim().length < 2) return "O nome deve ter pelo menos 2 caracteres.";
-        return "";
-      case "cpf": {
-        const clean = value.replace(/\D/g, "");
-        if (!clean) return "O CPF é obrigatório.";
-        if (!isValidCPF(clean)) return "CPF inválido. Verifique os dígitos.";
-        return "";
-      }
-      case "siap":
-        if (!value.trim()) return "O SIAP é obrigatório.";
-        if (value.trim().length < 2) return "O SIAP deve ter pelo menos 2 caracteres.";
-        return "";
-      case "userType":
-        if (!value) return "Selecione o tipo de usuário.";
-        return "";
-      case "email":
-        if (!value.trim()) return "O e-mail é obrigatório.";
-        if (!isValidEmail(value)) return "Digite um e-mail válido.";
-        return "";
-      case "password":
-        if (!value) return "A senha é obrigatória.";
-        if (value.length < 6) return "A senha deve ter no mínimo 6 caracteres.";
-        return "";
-      case "confirmPassword":
-        if (!value) return "A confirmação de senha é obrigatória.";
-        if (value !== formData.password) return "As senhas não coincidem.";
-        return "";
-      default:
-        return "";
-    }
-  };
-
-  const handleFieldChange = (field: keyof FormDataState, value: string) => {
-    const updatedValue = field === "cpf" ? formatCPF(value) : value;
-    setFormData((prev) => ({ ...prev, [field]: updatedValue }));
-
-    if (touchedFields[field]) {
-      const err = validateField(field, updatedValue);
-      setFieldErrors((prev) => ({ ...prev, [field]: err }));
-    }
-
-    if (field === "password" && touchedFields.confirmPassword) {
-      if (formData.confirmPassword && formData.confirmPassword !== value) {
-        setFieldErrors((prev) => ({
-          ...prev,
-          confirmPassword: "As senhas não coincidem.",
-        }));
-      } else if (formData.confirmPassword === value) {
-        setFieldErrors((prev) => ({ ...prev, confirmPassword: "" }));
-      }
-    }
-  };
-
-  const handleFieldBlur = (field: keyof FormDataState) => {
-    setTouchedFields((prev) => ({ ...prev, [field]: true }));
-    const err = validateField(field, formData[field]);
-    setFieldErrors((prev) => ({ ...prev, [field]: err }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setGlobalError(null);
-
-    const newErrors: Record<string, string> = {};
-    (Object.keys(formData) as (keyof FormDataState)[]).forEach((field) => {
-      const err = validateField(field, formData[field]);
-      if (err) newErrors[field] = err;
-    });
-
-    setTouchedFields({
-      name: true,
-      cpf: true,
-      siap: true,
-      userType: true,
-      email: true,
-      password: true,
-      confirmPassword: true,
-    });
-
-    setFieldErrors(newErrors);
-
-    if (Object.keys(newErrors).length > 0) {
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      const cleanCpf = formData.cpf.replace(/\D/g, "");
-      const res = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: formData.name.trim(),
-          cpf: cleanCpf,
-          siap: formData.siap.trim(),
-          ciap: formData.siap.trim(),
-          userType: formData.userType,
-          email: formData.email.trim().toLowerCase(),
-          password: formData.password,
-          confirmPassword: formData.confirmPassword,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok || !data.success) {
-        if (data.fieldErrors) {
-          setFieldErrors(data.fieldErrors);
-        }
-        throw new Error(data.error || "Não foi possível concluir seu cadastro. Tente novamente.");
-      }
-
-      setCurrentStep("conclusao");
-
-      // Redireciona automaticamente após 1.5s para o dashboard (onde a câmera de reconhecimento fica ativa)
-      setTimeout(() => {
-        router.push("/dashboard");
-      }, 1500);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Erro ao cadastrar usuário.";
-      setGlobalError(msg);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  const {
+    currentStep,
+    formData,
+    fieldErrors,
+    isSubmitting,
+    globalError,
+    handleFieldChange,
+    handleFieldBlur,
+    handleSubmit,
+    goToDashboard,
+  } = useRegisterFlow();
 
   return (
     <div className="w-full max-w-xl mx-auto flex flex-col items-center">
@@ -419,7 +260,7 @@ export function StepRegisterFlow() {
             <div>
               <button
                 type="button"
-                onClick={() => router.push("/dashboard")}
+                onClick={goToDashboard}
                 className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl shadow-sm transition"
               >
                 <span>Acessar Dashboard agora</span>

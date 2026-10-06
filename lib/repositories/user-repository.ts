@@ -12,14 +12,13 @@ export interface IUserRepository {
   recordAccessAndEvaluateVerification(id: string): Promise<{
     profile: UserProfileDTO;
     requiresVerification: boolean;
-    verificationReason: "CADASTRO_INICIAL" | "AUDITORIA_ALEATORIA" | null;
+    verificationReason: "CADASTRO_INICIAL" | null;
   }>;
   completeVerification(
     id: string,
     faceImage?: string | null
   ): Promise<{
     user: UserProfileDTO;
-    nextVerificationTrigger: number;
   }>;
   listAll(): Promise<UserListItemDTO[]>;
   deleteById(id: string): Promise<boolean>;
@@ -101,7 +100,7 @@ export class UserRepositoryPrisma implements IUserRepository {
         faceImage: data.faceImage || null,
         hasFaceRegistered: false,
         accessCountSinceLastVerification: 0,
-        nextVerificationTrigger: 3,
+        nextVerificationTrigger: 0,
       },
       select: {
         id: true,
@@ -153,7 +152,7 @@ export class UserRepositoryPrisma implements IUserRepository {
   async recordAccessAndEvaluateVerification(id: string): Promise<{
     profile: UserProfileDTO;
     requiresVerification: boolean;
-    verificationReason: "CADASTRO_INICIAL" | "AUDITORIA_ALEATORIA" | null;
+    verificationReason: "CADASTRO_INICIAL" | null;
   }> {
     const user = await prisma.user.findUnique({
       where: { id },
@@ -177,29 +176,16 @@ export class UserRepositoryPrisma implements IUserRepository {
       };
     }
 
-    // Regra 2: Usuário já possui biometria cadastrada.
-    // Incrementa o contador de acessos após a última verificação
-    const updatedCount = user.accessCountSinceLastVerification + 1;
-    const trigger = user.nextVerificationTrigger || 3;
-
-    await prisma.user.update({
-      where: { id },
-      data: { accessCountSinceLastVerification: updatedCount },
-    });
-
-    // Se atingiu o limite sorteado (3 a 5), exige revalidação aleatória de vivacidade
-    const requiresAudit = updatedCount >= trigger;
     const profile = await this.findProfileById(id);
 
     return {
       profile: {
         ...profile!,
-        accessCountSinceLastVerification: updatedCount,
-        requiresVerification: requiresAudit,
-        verificationReason: requiresAudit ? "AUDITORIA_ALEATORIA" : null,
+        requiresVerification: false,
+        verificationReason: null,
       },
-      requiresVerification: requiresAudit,
-      verificationReason: requiresAudit ? "AUDITORIA_ALEATORIA" : null,
+      requiresVerification: false,
+      verificationReason: null,
     };
   }
 
@@ -208,17 +194,13 @@ export class UserRepositoryPrisma implements IUserRepository {
     faceImage?: string | null
   ): Promise<{
     user: UserProfileDTO;
-    nextVerificationTrigger: number;
   }> {
-    // Sorteia o próximo gatilho aleatoriamente entre 3 e 5 acessos
-    const nextTrigger = Math.floor(Math.random() * 3) + 3; // 3, 4 ou 5
-
     const updated = await prisma.user.update({
       where: { id },
       data: {
         hasFaceRegistered: true,
         accessCountSinceLastVerification: 0,
-        nextVerificationTrigger: nextTrigger,
+        nextVerificationTrigger: 0,
         lastVerificationAt: new Date(),
         ...(faceImage !== undefined ? { faceImage } : {}),
       },
@@ -232,7 +214,6 @@ export class UserRepositoryPrisma implements IUserRepository {
         requiresVerification: false,
         verificationReason: null,
       },
-      nextVerificationTrigger: nextTrigger,
     };
   }
 

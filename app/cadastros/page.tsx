@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React from "react";
 import Link from "next/link";
 import { Modal } from "@/components/Modal";
+import { useCadastrosPage } from "@/hooks";
 import {
   Users,
   Search,
@@ -21,213 +22,37 @@ import {
 import {
   USER_TYPES,
   UserType,
-  isValidCPF,
   formatCPF,
-  isValidEmail,
 } from "@/lib/validation";
 
-interface CadastroUser {
-  id: string;
-  name: string;
-  cpf: string;
-  siap: string;
-  ciap?: string;
-  userType: string;
-  email: string;
-  faceImage?: string | null;
-  hasFaceRegistered?: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
 export default function CadastrosPage() {
-  const [users, setUsers] = useState<CadastroUser[]>([]);
-  const [searchTerm, setSearchTerm] = useState<string>("");
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [toastMessage, setToastMessage] = useState<{
-    text: string;
-    type: "success" | "error";
-  } | null>(null);
-
-  // Modal de Exclusão com confirmação
-  const [deletingUser, setDeletingUser] = useState<CadastroUser | null>(null);
-  const [isDeleting, setIsDeleting] = useState<boolean>(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
-
-  // Modal de Novo Cadastro Básico (Sem reconhecimento facial)
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
-  const [isCreating, setIsCreating] = useState<boolean>(false);
-  const [createError, setCreateError] = useState<string | null>(null);
-  const [newFormData, setNewFormData] = useState({
-    name: "",
-    cpf: "",
-    siap: "",
-    userType: "Graduação" as UserType,
-    email: "",
-    password: "",
-  });
-
-  const showToast = (text: string, type: "success" | "error" = "success") => {
-    setToastMessage({ text, type });
-    setTimeout(() => {
-      setToastMessage(null);
-    }, 4000);
-  };
-
-  const fetchUsers = useCallback(async () => {
-    setIsLoading(true);
-    setErrorMessage(null);
-    try {
-      const res = await fetch("/api/cadastros");
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || "Não foi possível carregar os cadastros.");
-      }
-      setUsers(data.users || []);
-    } catch (err: unknown) {
-      console.error("Erro ao buscar cadastros:", err);
-      const msg = err instanceof Error ? err.message : "Erro ao consultar o banco de dados.";
-      setErrorMessage(msg);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
-
-  // Exclusão com confirmação
-  const handleOpenDelete = (user: CadastroUser) => {
-    setDeletingUser(user);
-    setDeleteError(null);
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!deletingUser) return;
-    setIsDeleting(true);
-    setDeleteError(null);
-
-    try {
-      const res = await fetch(`/api/cadastros/${deletingUser.id}`, {
-        method: "DELETE",
-      });
-
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || "Falha ao excluir cadastro.");
-      }
-
-      setUsers((prev) => prev.filter((u) => u.id !== deletingUser.id));
-      setDeletingUser(null);
-      showToast("Cadastro excluído com sucesso!");
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Erro ao excluir.";
-      setDeleteError(msg);
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  // Criação de novo cadastro básico
-  const handleCreateSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setCreateError(null);
-
-    const cleanCpf = newFormData.cpf.replace(/\D/g, "");
-    if (!newFormData.name.trim() || newFormData.name.trim().length < 2) {
-      setCreateError("O nome completo deve ter pelo menos 2 caracteres.");
-      return;
-    }
-    if (!isValidCPF(cleanCpf)) {
-      setCreateError("CPF inválido. Verifique os dígitos.");
-      return;
-    }
-    if (!newFormData.siap.trim() || newFormData.siap.trim().length < 2) {
-      setCreateError("O SIAP é obrigatório.");
-      return;
-    }
-    if (!isValidEmail(newFormData.email)) {
-      setCreateError("Informe um e-mail válido.");
-      return;
-    }
-    if (!newFormData.password || newFormData.password.length < 6) {
-      setCreateError("A senha deve ter no mínimo 6 caracteres.");
-      return;
-    }
-
-    setIsCreating(true);
-
-    try {
-      const res = await fetch("/api/cadastros", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: newFormData.name.trim(),
-          cpf: cleanCpf,
-          siap: newFormData.siap.trim(),
-          ciap: newFormData.siap.trim(),
-          userType: newFormData.userType,
-          email: newFormData.email.trim().toLowerCase(),
-          password: newFormData.password,
-          confirmPassword: newFormData.password,
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || "Não foi possível criar o cadastro.");
-      }
-
-      setIsCreateModalOpen(false);
-      setNewFormData({
-        name: "",
-        cpf: "",
-        siap: "",
-        userType: "Graduação",
-        email: "",
-        password: "",
-      });
-      showToast("Novo cadastro criado com sucesso!");
-      fetchUsers();
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Erro ao criar cadastro.";
-      setCreateError(msg);
-    } finally {
-      setIsCreating(false);
-    }
-  };
-
-  const formatDate = (isoString: string) => {
-    try {
-      const date = new Date(isoString);
-      return new Intl.DateTimeFormat("pt-BR", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      }).format(date);
-    } catch {
-      return isoString;
-    }
-  };
-
-  const formatDisplayCpf = (cpf: string) => {
-    const clean = cpf.replace(/\D/g, "");
-    if (clean.length !== 11) return cpf;
-    return `${clean.slice(0, 3)}.${clean.slice(3, 6)}.${clean.slice(6, 9)}-${clean.slice(9, 11)}`;
-  };
-
-  const filteredUsers = users.filter((u) => {
-    const q = searchTerm.toLowerCase();
-    const siapVal = (u.siap || u.ciap || "").toLowerCase();
-    return (
-      u.name.toLowerCase().includes(q) ||
-      u.cpf.toLowerCase().includes(q) ||
-      siapVal.includes(q) ||
-      u.email.toLowerCase().includes(q)
-    );
-  });
+  const {
+    users,
+    searchTerm,
+    setSearchTerm,
+    isLoading,
+    errorMessage,
+    toastMessage,
+    deletingUser,
+    setDeletingUser,
+    isDeleting,
+    deleteError,
+    isCreateModalOpen,
+    setIsCreateModalOpen,
+    isCreating,
+    createError,
+    setCreateError,
+    newFormData,
+    setNewFormData,
+    showToast,
+    fetchUsers,
+    handleOpenDelete,
+    handleConfirmDelete,
+    handleCreateSubmit,
+    formatDate,
+    formatDisplayCpf,
+    filteredUsers,
+  } = useCadastrosPage();
 
   return (
     <div className="flex-1 flex flex-col justify-between">

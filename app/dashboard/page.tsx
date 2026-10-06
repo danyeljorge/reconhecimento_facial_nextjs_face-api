@@ -1,10 +1,9 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { UserProfileDTO, UserStatementDTO } from "@/lib/services/user-service";
 import { LivenessSecurityVerification } from "@/components/LivenessSecurityVerification";
+import { useDashboardPage } from "@/hooks";
 import {
   ScanFace,
   Receipt,
@@ -32,135 +31,24 @@ import {
   X,
 } from "lucide-react";
 
-type Tab = "reconhecimento" | "extrato" | "perfil";
-
 export default function DashboardPage() {
-  const router = useRouter();
-  const [activeTab, setActiveTab] = useState<Tab>("reconhecimento");
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
-  const [profile, setProfile] = useState<UserProfileDTO | null>(null);
-  const [statement, setStatement] = useState<UserStatementDTO | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [isLoggingOut, setIsLoggingOut] = useState<boolean>(false);
-
-  const handleSelectTab = (tab: Tab) => {
-    setActiveTab(tab);
-    setIsMobileMenuOpen(false);
-  };
-
-  // ESTADO DE VALIDAÇÃO DE VIVACIDADE (Passo 2)
-  // Só libera os menus de extrato e perfil depois que for validado!
-  const [isLivenessValidated, setIsLivenessValidated] = useState<boolean>(false);
-  const [capturedPhotoUrl, setCapturedPhotoUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    async function loadData() {
-      try {
-        const sessionRes = await fetch("/api/auth/session");
-        const sessionData = await sessionRes.json();
-
-        if (!sessionRes.ok || !sessionData.authenticated || !sessionData.user) {
-          router.push("/");
-          return;
-        }
-
-        const user = sessionData.user;
-        setProfile(user);
-        if (user.faceImage) {
-          setCapturedPhotoUrl(user.faceImage);
-        }
-
-        // Regra de Negócio:
-        // O liveness só é exibido obrigatoriamente para quem NÃO tem rosto cadastrado,
-        // ou quando o usuário é sorteado após 3-5 acessos (requiresVerification === true).
-        if (!user.requiresVerification) {
-          setIsLivenessValidated(true);
-        } else {
-          setIsLivenessValidated(false);
-        }
-
-        // Carregar extrato
-        const statementRes = await fetch("/api/user/statement");
-        const statementData = await statementRes.json();
-        if (statementRes.ok && statementData.statement) {
-          setStatement(statementData.statement);
-        }
-      } catch (err) {
-        console.error("Erro ao carregar sessão:", err);
-        router.push("/");
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    loadData();
-  }, [router]);
-
-  const handleLogout = async () => {
-    setIsLoggingOut(true);
-    try {
-      await fetch("/api/auth/logout", { method: "POST" });
-    } catch {
-      // Ignora erro
-    } finally {
-      router.push("/");
-    }
-  };
-
-  const handleLivenessSuccess = async (photoBase64: string) => {
-    setCapturedPhotoUrl(photoBase64);
-    setIsLivenessValidated(true);
-    setProfile((prev) =>
-      prev
-        ? {
-            ...prev,
-            hasFaceRegistered: true,
-            requiresVerification: false,
-            verificationReason: null,
-            ...(photoBase64 ? { faceImage: photoBase64 } : {}),
-          }
-        : prev
-    );
-
-    try {
-      const res = await fetch("/api/user/face", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ faceImage: photoBase64 }),
-      });
-      const data = await res.json();
-      if (data.user) {
-        setProfile((prev) => ({
-          ...(prev || data.user),
-          ...data.user,
-          requiresVerification: false,
-        }));
-      }
-    } catch (e) {
-      console.warn("Aviso ao despachar biometria facial para catraca/SISRU:", e);
-    }
-  };
-
-  const formatDate = (isoString?: string) => {
-    if (!isoString) return "-";
-    try {
-      const d = new Date(isoString);
-      return new Intl.DateTimeFormat("pt-BR", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      }).format(d);
-    } catch {
-      return isoString;
-    }
-  };
-
-  const formatDisplayCpf = (cpf?: string) => {
-    if (!cpf) return "-";
-    const clean = cpf.replace(/\D/g, "");
-    if (clean.length !== 11) return cpf;
-    return `${clean.slice(0, 3)}.${clean.slice(3, 6)}.${clean.slice(6, 9)}-${clean.slice(9, 11)}`;
-  };
+  const {
+    activeTab,
+    isMobileMenuOpen,
+    setIsMobileMenuOpen,
+    profile,
+    statement,
+    isLoading,
+    isLoggingOut,
+    isLivenessValidated,
+    capturedPhotoUrl,
+    handleSelectTab,
+    handleLogout,
+    handleLivenessSuccess,
+    resetLivenessValidation,
+    formatDate,
+    formatDisplayCpf,
+  } = useDashboardPage();
 
   if (isLoading) {
     return (
@@ -407,7 +295,7 @@ export default function DashboardPage() {
             {/* Item 1: Reconhecimento Facial */}
             <button
               type="button"
-              onClick={() => setActiveTab("reconhecimento")}
+              onClick={() => handleSelectTab("reconhecimento")}
               className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-semibold transition cursor-pointer ${
                 activeTab === "reconhecimento"
                   ? "bg-indigo-600 text-white shadow-sm shadow-indigo-600/20"
@@ -445,7 +333,7 @@ export default function DashboardPage() {
             <button
               type="button"
               disabled={!isLivenessValidated}
-              onClick={() => setActiveTab("extrato")}
+              onClick={() => handleSelectTab("extrato")}
               className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-semibold transition ${
                 !isLivenessValidated
                   ? "opacity-50 text-slate-400 bg-slate-50 cursor-not-allowed border border-dashed border-slate-200"
@@ -474,7 +362,7 @@ export default function DashboardPage() {
             <button
               type="button"
               disabled={!isLivenessValidated}
-              onClick={() => setActiveTab("perfil")}
+              onClick={() => handleSelectTab("perfil")}
               className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-semibold transition ${
                 !isLivenessValidated
                   ? "opacity-50 text-slate-400 bg-slate-50 cursor-not-allowed border border-dashed border-slate-200"
@@ -654,7 +542,7 @@ export default function DashboardPage() {
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
                       <button
                         type="button"
-                        onClick={() => setActiveTab("perfil")}
+                        onClick={() => handleSelectTab("perfil")}
                         className="inline-flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-sm transition cursor-pointer"
                       >
                         <UserIcon className="w-4 h-4" />
@@ -664,11 +552,11 @@ export default function DashboardPage() {
 
                       <button
                         type="button"
-                        onClick={() => setIsLivenessValidated(false)}
+                        onClick={resetLivenessValidation}
                         className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl border border-slate-300 transition cursor-pointer"
                       >
                         <RefreshCw className="w-3.5 h-3.5" />
-                        <span>Refazer verificação de presença</span>
+                        <span>Atualizar foto biométrica</span>
                       </button>
                     </div>
                   </div>
